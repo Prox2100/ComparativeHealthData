@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Price Comparison Tool</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles-new-layout.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">Hospital Price Comparison</h1>
+                <p class="tagline">Compare healthcare pricing across facilities</p>
+            </div>
+            <div class="header-actions">
+                <button id="export-csv" class="icon-button" title="Export to CSV">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+                <button id="export-pdf" class="icon-button" title="Print Report">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Procedure Filter Bar -->
+            <section class="top-procedure-bar">
+                <div class="procedure-filter-row">
+                    <div class="procedure-filter-item">
+                        <label for="service-category-filter">Service Category</label>
+                        <select id="service-category-filter" class="procedure-select">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+
+                    <div class="procedure-filter-item">
+                        <label for="shoppable-service-filter">Shoppable Service</label>
+                        <select id="shoppable-service-filter" class="procedure-select">
+                            <option value="">All Services</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+
+                    <div class="procedure-filter-item">
+                        <label for="procedure-filter">CPT/HCPCS</label>
+                        <div class="multi-select-wrapper">
+                            <input
+                                type="text"
+                                id="procedure-filter"
+                                class="procedure-input"
+                                placeholder="e.g., 80053-80075 or 99281, 99291"
+                                autocomplete="off"
+                            >
+                            <div id="procedure-dropdown" class="dropdown-menu hidden">
+                                <div id="procedure-list" class="dropdown-list">
+                                    <!-- Will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="procedure-filter-actions">
+                        <button id="apply-filters-button" class="btn-primary btn-filter-apply">
+                            Apply Filters
+                        </button>
+                        <button id="clear-all-filters-button" class="btn-secondary btn-filter-clear">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Content Area with Sidebar and Results -->
+            <div class="content-wrapper">
+                <!-- Left Sidebar -->
+                <aside class="sidebar">
+                    <!-- Target Hospital Selection -->
+                    <div class="sidebar-section">
+                        <h2 class="sidebar-title">Select Target Hospital(s)</h2>
+
+                        <div class="input-group">
+                            <label for="target-hospital-search">Search Hospitals</label>
+                            <div class="multi-select-wrapper">
+                                <input
+                                    type="text"
+                                    id="target-hospital-search"
+                                    class="text-input"
+                                    placeholder="Search hospitals..."
+                                    autocomplete="off"
+                                >
+                                <div id="target-hospital-dropdown" class="dropdown-menu hidden">
+                                    <div id="target-hospital-list" class="dropdown-list">
+                                        <!-- Will be populated dynamically -->
+                                    </div>
+                                </div>
+                                <div id="target-selected-hospitals" class="selected-items">
+                                    <!-- Selected hospitals will appear here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="filter-toggle-btn" id="target-filter-toggle">
+                            <div class="filter-toggle-label">
+                                <span>Advanced Search</span>
+                                <span class="filter-count-badge hidden" id="target-filter-count"></span>
+                            </div>
+                            <svg class="toggle-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <div id="target-advanced-filters" class="advanced-filters hidden">
+                            <div class="filter-grid">
+                                <div class="filter-item">
+                                    <label for="target-state">State</label>
+                                    <select id="target-state" class="filter-select">
+                                        <option value="">All States</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="target-city">City</label>
+                                    <input type="text" id="target-city" class="filter-input" placeholder="Enter city">
+                                </div>
+                                <div class="filter-item">
+                                    <label for="target-zip">Zip Code</label>
+                                    <input type="text" id="target-zip" class="filter-input" placeholder="Enter zip">
+                                </div>
+                                <div class="filter-item">
+                                    <label for="target-hospital-type">Hospital Type</label>
+                                    <select id="target-hospital-type" class="filter-select">
+                                        <option value="">All Types</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="target-ownership">Ownership</label>
+                                    <select id="target-ownership" class="filter-select">
+                                        <option value="">All Ownership Types</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label>Bed Size Range</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="target-beds-min" class="filter-input-small" placeholder="Min">
+                                        <span class="range-separator">to</span>
+                                        <input type="number" id="target-beds-max" class="filter-input-small" placeholder="Max">
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-secondary btn-small" id="target-clear-filters">Clear Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Peer Group Selection -->
+                    <div class="sidebar-section">
+                        <h2 class="sidebar-title">Select Peer Group</h2>
+                        <p class="help-text-sidebar">Leave empty to compare against national average</p>
+
+                        <div class="input-group">
+                            <label for="compare-hospital-search">Search Hospitals</label>
+                            <div class="multi-select-wrapper">
+                                <input
+                                    type="text"
+                                    id="compare-hospital-search"
+                                    class="text-input"
+                                    placeholder="Search hospitals or leave empty..."
+                                    autocomplete="off"
+                                >
+                                <div id="compare-hospital-dropdown" class="dropdown-menu hidden">
+                                    <div id="compare-hospital-list" class="dropdown-list">
+                                        <!-- Will be populated dynamically -->
+                                    </div>
+                                </div>
+                                <div id="compare-selected-hospitals" class="selected-items">
+                                    <!-- Selected hospitals will appear here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="filter-toggle-btn" id="compare-filter-toggle">
+                            <div class="filter-toggle-label">
+                                <span>Advanced Search</span>
+                                <span class="filter-count-badge hidden" id="compare-filter-count"></span>
+                            </div>
+                            <svg class="toggle-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <div id="compare-advanced-filters" class="advanced-filters hidden">
+                            <div class="filter-grid">
+                                <div class="filter-item">
+                                    <label for="compare-state">State</label>
+                                    <select id="compare-state" class="filter-select">
+                                        <option value="">All States</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="compare-city">City</label>
+                                    <input type="text" id="compare-city" class="filter-input" placeholder="Enter city">
+                                </div>
+                                <div class="filter-item">
+                                    <label for="compare-zip">Zip Code</label>
+                                    <input type="text" id="compare-zip" class="filter-input" placeholder="Enter zip">
+                                </div>
+                                <div class="filter-item">
+                                    <label for="compare-hospital-type">Hospital Type</label>
+                                    <select id="compare-hospital-type" class="filter-select">
+                                        <option value="">All Types</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="compare-ownership">Ownership</label>
+                                    <select id="compare-ownership" class="filter-select">
+                                        <option value="">All Ownership Types</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label>Bed Size Range</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="compare-beds-min" class="filter-input-small" placeholder="Min">
+                                        <span class="range-separator">to</span>
+                                        <input type="number" id="compare-beds-max" class="filter-input-small" placeholder="Max">
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-secondary btn-small" id="compare-clear-filters">Clear Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="sidebar-actions">
+                        <button id="compare-button" class="btn-primary">
+                            Compare
+                        </button>
+                        <button id="reset-button" class="btn-secondary">
+                            Reset
+                        </button>
+                    </div>
+                </aside>
+
+            <!-- Results Panel -->
+            <section class="results-panel" id="results-panel">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-state hidden">
+                    <div class="spinner"></div>
+                    <p>Calculating comparison...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <h3>No Comparison Yet</h3>
+                    <p>Select target hospital(s) and click "Compare" to see results vs national average</p>
+                </div>
+
+                <!-- Results Content -->
+                <div id="results-content" class="results-content hidden">
+                    <!-- Summary Cards -->
+                    <div class="summary-section">
+                        <h2 class="section-title">Comparison Summary</h2>
+                        <div class="summary-cards">
+                            <div class="summary-card">
+                                <div class="card-icon icon-target"></div>
+                                <div class="card-content">
+                                    <h3 id="target-name">Target Hospital</h3>
+                                    <p class="card-subtitle">Target Hospital</p>
+                                </div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="card-icon icon-compare"></div>
+                                <div class="card-content">
+                                    <h3 id="compare-name">Peer Hospitals</h3>
+                                    <p class="card-subtitle">Peer Hospitals</p>
+                                </div>
+                            </div>
+                            <div class="summary-card highlight">
+                                <div class="card-icon icon-percent"></div>
+                                <div class="card-content">
+                                    <h3 id="overall-variance" class="large-number">0%</h3>
+                                    <p class="card-subtitle">% Above / Below Peers</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Results -->
+                    <div class="detailed-results">
+                        <h2 class="section-title">Price Comparison Details</h2>
+
+                        <!-- Overall Metrics -->
+                        <div class="metrics-grid" id="overall-metrics">
+                            <!-- Will be populated dynamically -->
+                        </div>
+
+                        <!-- Procedure-Level Comparison -->
+                        <div class="procedure-comparison">
+                            <h3 class="subsection-title">By CPT/HCPCS Code</h3>
+                            <div class="table-container">
+                                <table class="comparison-table sortable" id="procedure-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable-header" data-column="code">
+                                                CPT/HCPCS
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="name">
+                                                Procedure Name
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="hospitalsCount">
+                                                # Hospitals
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="targetVolume">
+                                                Target Volume
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="compareVolume">
+                                                Peer Volume
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="targetAvgCharge">
+                                                Target Avg Charge
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="compareAvgCharge">
+                                                Peer Avg Charge
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="targetRevenue">
+                                                Target Revenue
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="compareRevenue">
+                                                Peer Revenue
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header" data-column="difference">
+                                                Difference
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable-header active desc" data-column="percentVariance">
+                                                % Above/Below Peer
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Will be populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            </div><!-- end content-wrapper -->
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 Hospital Price Comparison Tool. Data sources: CMS Hospital Price Transparency</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

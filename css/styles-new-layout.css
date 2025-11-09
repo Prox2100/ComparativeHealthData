@@ -1,0 +1,535 @@
+/* ==================================
+   HYBRID LAYOUT: TOP BAR + SIDEBAR
+   ================================== */
+
+/* ==================================
+   HEADER WITH ACTION BUTTONS
+   ================================== */
+
+.header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding-right: var(--space-4);
+}
+
+.icon-button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-white);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    opacity: 0.9;
+}
+
+.icon-button:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.icon-button:active {
+    transform: translateY(0);
+}
+
+.icon-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Main Content Area - Vertical Stack */
+.main-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
+/* ==================================
+   TOP PROCEDURE FILTER BAR
+   ================================== */
+
+.top-procedure-bar {
+    background: linear-gradient(to bottom, var(--color-white), var(--color-gray-50));
+    border-bottom: 2px solid var(--color-primary-light);
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.1);
+    flex-shrink: 0;
+    z-index: 80;
+    padding: var(--space-4) var(--space-6);
+}
+
+.procedure-filter-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-4);
+    max-width: 100%;
+}
+
+.procedure-filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    flex: 1;
+    min-width: 220px;
+}
+
+.procedure-filter-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: flex-end;
+    padding-bottom: 2px;
+}
+
+.btn-filter-apply,
+.btn-filter-clear {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.procedure-filter-item label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.procedure-select,
+.procedure-input {
+    width: 100%;
+    height: 42px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: var(--font-family);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-white);
+    transition: all var(--transition-base);
+    outline: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.procedure-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236B7280' d='M6 8L0 0h12L6 8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px;
+    padding-right: 40px;
+}
+
+.procedure-select:focus,
+.procedure-input:focus {
+    border-color: var(--color-primary);
+    background-color: var(--color-white);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.procedure-select:hover,
+.procedure-input:hover {
+    border-color: var(--color-gray-400);
+}
+
+/* ==================================
+   CONTENT WRAPPER: SIDEBAR + RESULTS
+   ================================== */
+
+.content-wrapper {
+    flex: 1 !important;
+    display: flex !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+
+/* ==================================
+   LEFT SIDEBAR
+   ================================== */
+
+.sidebar {
+    width: 380px;
+    background: var(--color-white);
+    border-right: 2px solid var(--color-gray-200);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-section {
+    padding: var(--space-5);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.sidebar-section:last-of-type {
+    border-bottom: none;
+}
+
+.sidebar-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: var(--space-3);
+    color: var(--color-gray-900);
+    letter-spacing: -0.2px;
+}
+
+.help-text-sidebar {
+    font-size: 12px;
+    color: var(--color-gray-600);
+    margin-bottom: var(--space-3);
+    font-style: italic;
+}
+
+.sidebar-actions {
+    position: sticky;
+    bottom: 0;
+    padding: var(--space-4) var(--space-5);
+    background: linear-gradient(to top, rgba(255, 255, 255, 1) 70%, rgba(255, 255, 255, 0.98) 85%, rgba(255, 255, 255, 0.95) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 2px solid var(--color-primary-light);
+    box-shadow: 0 -4px 12px rgba(20, 184, 166, 0.1);
+    display: flex;
+    gap: var(--space-3);
+    margin-top: auto;
+    flex-shrink: 0;
+    z-index: 20;
+}
+
+.sidebar-actions .btn-primary,
+.sidebar-actions .btn-secondary {
+    flex: 1;
+}
+
+/* ==================================
+   RESULTS PANEL - RIGHT SIDE
+   ================================== */
+
+.results-panel {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background-color: var(--color-gray-50) !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+.results-content:not(.hidden) {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: var(--space-5) var(--space-6) !important;
+    animation: none !important;
+    background: var(--color-white) !important;
+}
+
+.results-content.hidden {
+    display: none !important;
+}
+
+/* Empty State - Centered */
+.empty-state:not(.hidden) {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--color-white) !important;
+    padding: var(--space-8) !important;
+}
+
+.empty-state.hidden {
+    display: none !important;
+}
+
+/* Loading State - Centered */
+.loading-state:not(.hidden) {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--color-white) !important;
+}
+
+.loading-state.hidden {
+    display: none !important;
+}
+
+/* ==================================
+   SUMMARY SECTION - COMPACT
+   ================================== */
+
+.summary-section {
+    margin-bottom: var(--space-4) !important;
+    flex-shrink: 0 !important;
+}
+
+.summary-section .section-title {
+    font-size: 18px !important;
+    margin-bottom: var(--space-3) !important;
+    font-weight: 700 !important;
+}
+
+.summary-cards {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: var(--space-3) !important;
+    margin-top: 0 !important;
+}
+
+.summary-card {
+    padding: var(--space-4) !important;
+}
+
+.card-icon {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 20px !important;
+}
+
+.card-content h3 {
+    font-size: 15px !important;
+}
+
+.card-subtitle {
+    font-size: 11px !important;
+}
+
+.large-number {
+    font-size: 28px !important;
+}
+
+/* ==================================
+   DETAILED RESULTS - SCROLLABLE
+   ================================== */
+
+.detailed-results {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+
+.detailed-results .section-title {
+    font-size: 18px !important;
+    margin-bottom: var(--space-3) !important;
+    flex-shrink: 0 !important;
+    font-weight: 700 !important;
+}
+
+/* ==================================
+   METRICS GRID - COMPACT
+   ================================== */
+
+.metrics-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: var(--space-3) !important;
+    margin-bottom: var(--space-4) !important;
+    flex-shrink: 0 !important;
+}
+
+.metric-card {
+    padding: var(--space-3) !important;
+}
+
+.metric-label {
+    font-size: 11px !important;
+    margin-bottom: var(--space-1) !important;
+}
+
+.metric-value {
+    font-size: 20px !important;
+}
+
+/* ==================================
+   PROCEDURE COMPARISON TABLE
+   ================================== */
+
+.procedure-comparison {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.procedure-comparison .subsection-title {
+    font-size: 16px !important;
+    margin-bottom: var(--space-3) !important;
+    flex-shrink: 0 !important;
+    font-weight: 700 !important;
+}
+
+.table-container {
+    flex: 1 !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    border: 1px solid var(--color-gray-200) !important;
+    border-radius: var(--radius-sm) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    min-height: 0 !important;
+    background: var(--color-white) !important;
+}
+
+.comparison-table {
+    width: max-content !important;
+    min-width: 100% !important;
+    border-collapse: collapse !important;
+}
+
+.comparison-table th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: linear-gradient(to bottom, var(--color-gray-50), var(--color-gray-100)) !important;
+    font-size: 11px !important;
+    padding: 10px 12px !important;
+    white-space: nowrap !important;
+}
+
+.comparison-table td {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.01em !important;
+    font-variant-numeric: tabular-nums !important;
+    line-height: 1.5 !important;
+}
+
+.comparison-table td.number-cell {
+    font-family: var(--font-mono) !important;
+    font-size: 13px !important;
+}
+
+.comparison-table td .variance-positive,
+.comparison-table td .variance-negative,
+.comparison-table td .variance-neutral {
+    font-weight: 700 !important;
+    font-size: 14px !important;
+}
+
+
+/* ==================================
+   SCROLLBAR STYLING
+   ================================== */
+
+.table-container::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-container::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track {
+    background: var(--color-gray-100);
+    border-radius: var(--radius-sm);
+}
+
+.table-container::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--color-gray-100);
+}
+
+.table-container::-webkit-scrollbar-thumb:hover,
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary-hover);
+}
+
+/* ==================================
+   FOOTER - COMPACT
+   ================================== */
+
+.footer {
+    padding: var(--space-3) var(--space-6) !important;
+    margin-top: 0 !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
+}
+
+/* ==================================
+   RESPONSIVE ADJUSTMENTS
+   ================================== */
+
+@media (max-width: 1400px) {
+    .sidebar {
+        width: 340px;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    .sidebar {
+        width: 320px;
+    }
+
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .procedure-filter-row {
+        flex-wrap: wrap;
+    }
+
+    .procedure-filter-item {
+        min-width: 180px;
+    }
+}
+
+@media (max-width: 900px) {
+    .content-wrapper {
+        flex-direction: column !important;
+    }
+
+    .sidebar {
+        width: 100% !important;
+        max-height: 300px;
+        border-right: none;
+        border-bottom: 2px solid var(--color-gray-200);
+    }
+
+    .summary-cards {
+        grid-template-columns: 1fr !important;
+    }
+
+    .metrics-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

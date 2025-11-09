@@ -1,0 +1,79 @@
+╔═══════════════════════════════════════════════════════════════╗
+║     HOSPITAL PRICE COMPARISON WEB APPLICATION - QUICK START   ║
+╚═══════════════════════════════════════════════════════════════╝
+
+✅ APPLICATION IS NOW RUNNING!
+
+📍 Access the application at:
+   http://localhost:8000
+
+🌐 The server is running in the background on port 8000
+
+═══════════════════════════════════════════════════════════════
+
+HOW TO USE:
+
+1. SELECT TARGET HOSPITAL
+   → Choose the hospital you want to analyze from the dropdown
+
+2. CHOOSE COMPARISON TYPE
+   → Single Hospital: Compare against one specific hospital
+   → Hospital Group: Compare against multiple hospitals (peer group)
+
+3. OPTIONAL: FILTER BY PROCEDURE
+   → Enter a CPT/HCPCS code (e.g., 74176, 72146)
+   → Leave empty to compare all procedures
+
+4. CLICK "COMPARE PRICES"
+   → View detailed comparison results
+   → See overall variance and procedure-level breakdowns
+
+5. EXPORT RESULTS
+   → Export to CSV for further analysis
+   → Print report for documentation
+
+═══════════════════════════════════════════════════════════════
+
+KEY FEATURES:
+
+✓ 41,440 hospitals in database
+✓ 7,307 unique procedure codes
+✓ Volume-weighted average calculations
+✓ Real-time comparison engine
+✓ Modern, responsive design
+✓ Export to CSV
+✓ Print-friendly reports
+
+═══════════════════════════════════════════════════════════════
+
+UNDERSTANDING RESULTS:
+
+📊 Overall Variance:
+   • Positive % (RED): Target hospital charges MORE
+   • Negative % (GREEN): Target hospital charges LESS
+
+💰 Weighted Average:
+   • Prices weighted by procedure volume
+   • Fair comparison across different case mixes
+
+📋 Procedure Table:
+   • Sorted by highest variance first
+   • Shows dollar and percentage differences
+   • Includes procedure names and codes
+
+═══════════════════════════════════════════════════════════════
+
+TO STOP THE SERVER:
+
+Run this command in Terminal:
+   pkill -f "http.server 8000"
+
+Or find the process and kill it:
+   lsof -ti:8000 | xargs kill
+
+═══════════════════════════════════════════════════════════════
+
+For detailed documentation, see README.md
+For full project specifications, see PROJECT_PLAN.md
+
+═══════════════════════════════════════════════════════════════
