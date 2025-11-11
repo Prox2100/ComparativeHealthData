@@ -591,16 +591,88 @@ label {
     margin-top: var(--space-1);
 }
 
-/* Procedure Comparison */
-.procedure-comparison {
+/* Tabbed Comparison Views */
+.comparison-tabs-container {
     margin-top: var(--space-6);
 }
 
-.table-container {
-    overflow-x: auto;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-gray-200);
-    margin-top: var(--space-4);
+/* Tab Navigation - Folder Style */
+.tabs-navigation {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: 0;
+    padding-left: var(--space-3);
+}
+
+.tab-button {
+    padding: var(--space-3) var(--space-5);
+    background: var(--color-gray-100);
+    border: 1px solid var(--color-gray-300);
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    color: var(--color-gray-600);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    position: relative;
+    margin-bottom: -1px;
+}
+
+.tab-button:hover {
+    background: var(--color-gray-50);
+    color: var(--color-primary);
+}
+
+.tab-button.active {
+    background: var(--color-white);
+    color: var(--color-primary);
+    border-color: var(--color-gray-300);
+    font-weight: 600;
+    z-index: 2;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Tab Content */
+.tabs-content {
+    position: relative;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+    background: var(--color-white);
+    padding: var(--space-4);
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Ensure scrollbars are visible in Webkit browsers */
+.table-container::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: var(--color-gray-100);
+    border-radius: var(--radius-sm);
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--color-gray-400);
+    border-radius: var(--radius-sm);
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gray-500);
+}
+
+.tab-panel .table-container {
+    margin-top: 0;
 }
 
 .comparison-table {
@@ -620,6 +692,10 @@ label {
     font-size: 13px;
     color: var(--color-gray-700);
     border-bottom: 2px solid var(--color-primary-light);
+    position: sticky;
+    top: 0;
+    background: linear-gradient(to bottom, var(--color-gray-50), var(--color-gray-100));
+    z-index: 10;
     white-space: nowrap;
     text-transform: uppercase;
     letter-spacing: 0.3px;

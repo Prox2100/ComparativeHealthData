@@ -306,63 +306,202 @@
                             <!-- Will be populated dynamically -->
                         </div>
 
-                        <!-- Procedure-Level Comparison -->
-                        <div class="procedure-comparison">
-                            <h3 class="subsection-title">By CPT/HCPCS Code</h3>
-                            <div class="table-container">
-                                <table class="comparison-table sortable" id="procedure-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="sortable-header" data-column="code">
-                                                CPT/HCPCS
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="name">
-                                                Procedure Name
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="hospitalsCount">
-                                                # Hospitals
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="targetVolume">
-                                                Target Volume
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="compareVolume">
-                                                Peer Volume
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="targetAvgCharge">
-                                                Target Avg Charge
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="compareAvgCharge">
-                                                Peer Avg Charge
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="targetRevenue">
-                                                Target Revenue
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="compareRevenue">
-                                                Peer Revenue
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header" data-column="difference">
-                                                Difference
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                            <th class="sortable-header active desc" data-column="percentVariance">
-                                                % Above/Below Peer
-                                                <span class="sort-icon"></span>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Will be populated dynamically -->
-                                    </tbody>
-                                </table>
+                        <!-- Tabbed Comparison Views -->
+                        <div class="comparison-tabs-container">
+                            <!-- Tab Navigation -->
+                            <div class="tabs-navigation">
+                                <button class="tab-button active" data-tab="hospitals">
+                                    By Hospital
+                                </button>
+                                <button class="tab-button" data-tab="categories">
+                                    By Service Category
+                                </button>
+                                <button class="tab-button" data-tab="procedures">
+                                    By CPT/HCPCS Code
+                                </button>
+                                <button class="tab-button" data-tab="breakdown">
+                                    Breakdown
+                                </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="tabs-content">
+                                <!-- Hospital-Level Comparison Tab -->
+                                <div class="tab-panel active" id="tab-hospitals">
+                                    <div class="table-container">
+                                        <table class="comparison-table sortable" id="hospital-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="sortable-header" data-column="provnum">
+                                                        Provider Number
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="hospitalName">
+                                                        Hospital Name
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetVolume">
+                                                        Target Volume
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="peerVolume">
+                                                        Peer Volume
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetAvgCharge">
+                                                        Target Avg Charge
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="peerAvgCharge">
+                                                        Peer Avg Charge
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetRevenue">
+                                                        Target Revenue
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="peerRevenue">
+                                                        Peer Revenue
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header active desc" data-column="percentVariance">
+                                                        % Above/Below
+                                                        <span class="sort-icon">▼</span>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Will be populated dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Service Category Comparison Tab -->
+                                <div class="tab-panel" id="tab-categories">
+                                    <div class="table-container">
+                                        <table class="comparison-table sortable" id="category-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="sortable-header" data-column="serviceCategory">
+                                                        Service Category
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="servicesCount">
+                                                        # Services
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetVolume">
+                                                        Target Volume
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="peerVolume">
+                                                        Peer Volume
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetAvgCharge">
+                                                        Target Avg Charge
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="peerAvgCharge">
+                                                        Peer Avg Charge
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetRevenue">
+                                                        Target Revenue
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="peerRevenue">
+                                                        Peer Revenue
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header active desc" data-column="percentVariance">
+                                                        % Above/Below
+                                                        <span class="sort-icon">▼</span>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Will be populated dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Procedure-Level Comparison Tab -->
+                                <div class="tab-panel" id="tab-procedures">
+                                    <div class="table-container">
+                                        <table class="comparison-table sortable" id="procedure-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="sortable-header" data-column="code">
+                                                        CPT/HCPCS
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="name">
+                                                        Procedure Name
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="hospitalsCount">
+                                                        # Hospitals
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetVolume">
+                                                        Target Volume
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="compareVolume">
+                                                        Peer Volume
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetAvgCharge">
+                                                        Target Avg Charge
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="compareAvgCharge">
+                                                        Peer Avg Charge
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="targetRevenue">
+                                                        Target Revenue
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="compareRevenue">
+                                                        Peer Revenue
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header" data-column="difference">
+                                                        Difference
+                                                        <span class="sort-icon"></span>
+                                                    </th>
+                                                    <th class="sortable-header active desc" data-column="percentVariance">
+                                                        % Above/Below Peer
+                                                        <span class="sort-icon">▼</span>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Will be populated dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Breakdown Tab -->
+                                <div class="tab-panel" id="tab-breakdown">
+                                    <div class="table-container">
+                                        <table class="comparison-table sortable" id="breakdown-table">
+                                            <thead>
+                                                <tr id="breakdown-headers">
+                                                    <!-- Headers will be populated dynamically -->
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Will be populated dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

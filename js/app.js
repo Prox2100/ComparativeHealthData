@@ -117,13 +117,13 @@ async function loadHospitalData() {
         }
         AppState.hospitalData = await response.json();
 
-        // Convert to array and sort for better performance
+        // Convert to array and sort by net_patient_revenue (descending) for better performance
         AppState.hospitalsArray = Object.values(AppState.hospitalData.hospitals)
             .map(h => ({
                 ...h,
                 searchText: `${h.name} ${h.provnum} ${h.city} ${h.state}`.toLowerCase()
             }))
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => (b.net_patient_revenue || 0) - (a.net_patient_revenue || 0));
 
         console.log(`Loaded data for ${AppState.hospitalsArray.length} hospitals`);
     } catch (error) {
@@ -293,6 +293,9 @@ function setupEventListeners() {
 
     // Table sorting
     setupTableSorting();
+
+    // Tab switching
+    setupTabSwitching();
 }
 
 /**
@@ -766,7 +769,8 @@ async function performComparison() {
             displayResults(results);
         } catch (error) {
             console.error('Error performing comparison:', error);
-            alert('An error occurred during comparison. Please try again.');
+            console.error('Error stack:', error.stack);
+            alert(`An error occurred during comparison: ${error.message}\n\nPlease check the console for details.`);
             hideLoadingState();
         }
     }, 100);
@@ -776,17 +780,23 @@ async function performComparison() {
  * Calculate price comparison
  */
 function calculateComparison(targetProvnums, compareProvnums, procedureFilters, useNationalAverage, targetDescription, compareDescription) {
-    const targetHospitals = targetProvnums.map(pn => AppState.hospitalData.hospitals[pn]);
-    const compareHospitals = compareProvnums.map(pn => AppState.hospitalData.hospitals[pn]);
+    const targetHospitals = targetProvnums.map(pn => AppState.hospitalData.hospitals[pn]).filter(h => h != null);
+    const compareHospitals = compareProvnums.map(pn => AppState.hospitalData.hospitals[pn]).filter(h => h != null);
 
     // Get all procedures from target hospitals
     const allProcedureCodes = new Set();
     targetHospitals.forEach(hospital => {
-        Object.keys(hospital.procedures).forEach(code => allProcedureCodes.add(code));
+        if (hospital.procedures) {
+            Object.keys(hospital.procedures).forEach(code => allProcedureCodes.add(code));
+        }
     });
 
     // Apply procedure filters if specified
     let proceduresToCompare = Array.from(allProcedureCodes);
+
+    if (proceduresToCompare.length === 0) {
+        throw new Error('No procedures found in target hospitals. Please select different hospitals.');
+    }
 
     // Filter by CPT/HCPCS code - supports ranges and multiple codes
     if (procedureFilters.cptCode) {
@@ -860,15 +870,15 @@ function calculateComparison(targetProvnums, compareProvnums, procedureFilters, 
             compareTotalVol = nationalAvg.totalVolume;
             compareCount = nationalAvg.hospitalCount;
         } else {
-            // Use selected hospitals
-            compareAvgCharge = 0;
+            // Use selected hospitals - calculate weighted average
+            let compareTotalCharges = 0;
             compareTotalVol = 0;
             compareCount = 0;
 
             compareHospitals.forEach(hospital => {
                 const proc = hospital.procedures[code];
                 if (proc && proc.volume > 0) {
-                    compareAvgCharge += proc.avg_charge;
+                    compareTotalCharges += proc.avg_charge * proc.volume;  // Total charges
                     compareTotalVol += proc.volume;
                     compareCount++;
                 }
@@ -876,7 +886,8 @@ function calculateComparison(targetProvnums, compareProvnums, procedureFilters, 
 
             if (compareCount === 0) return;
 
-            compareAvgCharge = compareAvgCharge / compareCount;
+            // Weighted average: SUM(Peer Total Charges) / SUM(Peer Volume)
+            compareAvgCharge = compareTotalVol > 0 ? compareTotalCharges / compareTotalVol : 0;
         }
 
         // Calculate metrics
@@ -979,6 +990,9 @@ function displayResults(results) {
 
     displayOverallMetrics(results);
     displayProcedureTable(results);
+    displayHospitalTable(results);
+    displayCategoryTable(results);
+    displayBreakdownTable(results);
 }
 
 /**
@@ -1075,6 +1089,381 @@ function displayProcedureTable(results) {
 }
 
 /**
+ * Display hospital comparison table - shows peer hospitals comparison
+ */
+function displayHospitalTable(results, sortColumn = 'percentVariance', sortDirection = 'desc') {
+    const tableBody = document.querySelector('#hospital-table tbody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+
+    // Calculate hospital-level comparisons
+    const hospitalComparisons = [];
+
+    // Get all procedure codes that exist in the comparison (1-to-1 matches only)
+    const allProcedureCodes = new Set();
+    results.procedureComparisons.forEach(proc => {
+        allProcedureCodes.add(proc.code);
+    });
+
+    // If using national average, show TARGET hospitals compared to national avg
+    // Otherwise show PEER hospitals
+    const hospitalsToShow = results.useNationalAverage ? results.targetHospitals : results.compareHospitals;
+
+    // Process each hospital
+    hospitalsToShow.forEach(hospital => {
+        // Calculate metrics for this hospital using CPT/HCPCS aggregation approach
+        let hospitalTotalRevenue = 0;
+        let compareTotalRevenue = 0;
+        let hospitalTotalVolume = 0;
+        let compareTotalVolume = 0;
+
+        // For each procedure code in the comparison
+        allProcedureCodes.forEach(code => {
+            const hospitalProc = hospital.procedures[code];
+            if (!hospitalProc || hospitalProc.volume === 0) return;
+
+            if (results.useNationalAverage) {
+                // Comparing target hospital to national average
+                const nationalAvg = AppState.nationalAverages[code];
+                if (!nationalAvg) return;
+
+                hospitalTotalVolume += hospitalProc.volume;
+                hospitalTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;
+                compareTotalRevenue += nationalAvg.avgCharge * hospitalProc.volume;
+                compareTotalVolume += hospitalProc.volume;
+            } else {
+                // Comparing peer hospital to target average
+                // Calculate target average for this CPT code
+                let targetAvgCharge = 0;
+                let targetCount = 0;
+                let targetVolumeForCode = 0;
+
+                results.targetHospitals.forEach(targetHospital => {
+                    const targetProc = targetHospital.procedures[code];
+                    if (targetProc && targetProc.volume > 0) {
+                        targetAvgCharge += targetProc.avg_charge;
+                        targetVolumeForCode += targetProc.volume;
+                        targetCount++;
+                    }
+                });
+
+                if (targetCount === 0) return;
+
+                // Average the target charges for this CPT code
+                targetAvgCharge = targetAvgCharge / targetCount;
+
+                // Use target volume for revenue calculation (apples-to-apples)
+                hospitalTotalVolume += targetVolumeForCode;
+                hospitalTotalRevenue += targetAvgCharge * targetVolumeForCode;
+                compareTotalVolume += hospitalProc.volume;
+                compareTotalRevenue += hospitalProc.avg_charge * targetVolumeForCode; // Use target volume!
+            }
+        });
+
+        if (hospitalTotalVolume === 0) return;
+
+        const hospitalAvgCharge = hospitalTotalRevenue / hospitalTotalVolume;
+        const compareAvgCharge = compareTotalRevenue / hospitalTotalVolume;
+
+        // Calculate variance
+        const difference = hospitalTotalRevenue - compareTotalRevenue;
+        const percentVariance = compareTotalRevenue > 0 ? ((difference / compareTotalRevenue) * 100) : 0;
+
+        hospitalComparisons.push({
+            provnum: hospital.provnum,
+            hospitalName: hospital.name,
+            targetVolume: hospitalTotalVolume,
+            peerVolume: compareTotalVolume,
+            targetAvgCharge: hospitalAvgCharge,
+            peerAvgCharge: compareAvgCharge,
+            targetRevenue: hospitalTotalRevenue,
+            peerRevenue: compareTotalRevenue,
+            percentVariance
+        });
+    });
+
+    // Sort by specified column and direction
+    hospitalComparisons.sort((a, b) => {
+        let aVal = a[sortColumn];
+        let bVal = b[sortColumn];
+
+        // Handle string sorting
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (sortDirection === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+    });
+
+    // Render table rows
+    const fragment = document.createDocumentFragment();
+
+    hospitalComparisons.forEach(hosp => {
+        const row = document.createElement('tr');
+
+        const varianceClass = hosp.percentVariance > 0 ? 'variance-positive'
+            : hosp.percentVariance < 0 ? 'variance-negative'
+                : 'variance-neutral';
+
+        row.innerHTML = `
+            <td class="code-cell">${hosp.provnum}</td>
+            <td>${hosp.hospitalName}</td>
+            <td class="number-cell">${hosp.targetVolume.toLocaleString()}</td>
+            <td class="number-cell">${hosp.peerVolume.toLocaleString()}</td>
+            <td class="number-cell">$${hosp.targetAvgCharge.toFixed(2)}</td>
+            <td class="number-cell">$${hosp.peerAvgCharge.toFixed(2)}</td>
+            <td class="number-cell">$${hosp.targetRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+            <td class="number-cell">$${hosp.peerRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+            <td class="number-cell"><span class="${varianceClass}">${hosp.percentVariance >= 0 ? '+' : ''}${hosp.percentVariance.toFixed(1)}%</span></td>
+        `;
+
+        fragment.appendChild(row);
+    });
+
+    tableBody.appendChild(fragment);
+}
+
+/**
+ * Display service category comparison table
+ */
+function displayCategoryTable(results, sortColumn = 'percentVariance', sortDirection = 'desc') {
+    const tableBody = document.querySelector('#category-table tbody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+
+    // Group procedures by service category (using same logic as CPT/HCPCS)
+    const categoryData = {};
+
+    results.procedureComparisons.forEach(proc => {
+        const category = AppState.hospitalData.service_category_map[proc.code] || 'Uncategorized';
+
+        if (!categoryData[category]) {
+            categoryData[category] = {
+                serviceCategory: category,
+                servicesSet: new Set(),  // Track distinct CPT/HCPCS codes
+                targetVolume: 0,
+                peerVolume: 0,
+                targetRevenue: 0,
+                peerRevenue: 0
+            };
+        }
+
+        categoryData[category].servicesSet.add(proc.code);  // Add CPT/HCPCS code to set
+        categoryData[category].targetVolume += proc.targetVolume;
+        categoryData[category].peerVolume += proc.compareVolume;
+        // Use the same revenue calculation as CPT table (peer avg * target volume)
+        categoryData[category].targetRevenue += proc.targetRevenue;
+        categoryData[category].peerRevenue += proc.compareRevenue;
+    });
+
+    // Convert to array and calculate metrics (same as CPT/HCPCS logic)
+    const categoryComparisons = Object.values(categoryData).map(cat => {
+        const targetAvgCharge = cat.targetVolume > 0 ? cat.targetRevenue / cat.targetVolume : 0;
+        const peerAvgCharge = cat.targetVolume > 0 ? cat.peerRevenue / cat.targetVolume : 0;
+        const difference = cat.targetRevenue - cat.peerRevenue;
+        const percentVariance = cat.peerRevenue > 0 ? ((difference / cat.peerRevenue) * 100) : 0;
+
+        return {
+            serviceCategory: cat.serviceCategory,
+            servicesCount: cat.servicesSet.size,  // Count of distinct CPT/HCPCS codes
+            targetVolume: cat.targetVolume,
+            peerVolume: cat.peerVolume,
+            targetAvgCharge,
+            peerAvgCharge,
+            targetRevenue: cat.targetRevenue,
+            peerRevenue: cat.peerRevenue,
+            percentVariance
+        };
+    });
+
+    // Sort by specified column and direction
+    categoryComparisons.sort((a, b) => {
+        let aVal = a[sortColumn];
+        let bVal = b[sortColumn];
+
+        // Handle string sorting
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (sortDirection === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+    });
+
+    // Render table rows
+    const fragment = document.createDocumentFragment();
+
+    categoryComparisons.forEach(cat => {
+        const row = document.createElement('tr');
+
+        const varianceClass = cat.percentVariance > 0 ? 'variance-positive'
+            : cat.percentVariance < 0 ? 'variance-negative'
+                : 'variance-neutral';
+
+        row.innerHTML = `
+            <td>${cat.serviceCategory}</td>
+            <td class="number-cell">${cat.servicesCount}</td>
+            <td class="number-cell">${cat.targetVolume.toLocaleString()}</td>
+            <td class="number-cell">${cat.peerVolume.toLocaleString()}</td>
+            <td class="number-cell">$${cat.targetAvgCharge.toFixed(2)}</td>
+            <td class="number-cell">$${cat.peerAvgCharge.toFixed(2)}</td>
+            <td class="number-cell">$${cat.targetRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+            <td class="number-cell">$${cat.peerRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+            <td class="number-cell"><span class="${varianceClass}">${cat.percentVariance >= 0 ? '+' : ''}${cat.percentVariance.toFixed(1)}%</span></td>
+        `;
+
+        fragment.appendChild(row);
+    });
+
+    tableBody.appendChild(fragment);
+}
+
+/**
+ * Display breakdown table with individual peer hospital charges
+ */
+function displayBreakdownTable(results, sortColumn = 'code', sortDirection = 'asc') {
+    const tableHeaders = document.querySelector('#breakdown-headers');
+    const tableBody = document.querySelector('#breakdown-table tbody');
+
+    if (!tableHeaders || !tableBody) return;
+
+    tableHeaders.innerHTML = '';
+    tableBody.innerHTML = '';
+
+    // Build dynamic headers - tableHeaders is already a <tr> element
+    // Fixed columns
+    const fixedHeaders = [
+        { column: 'code', label: 'CPT/HCPCS' },
+        { column: 'name', label: 'Procedure Name' },
+        { column: 'hospitalsCount', label: '# Hospitals' },
+        { column: 'targetVolume', label: 'Target Volume' },
+        { column: 'targetRevenue', label: 'Target Revenue' },
+        { column: 'targetAvgCharge', label: 'Target Avg Charge' },
+        { column: 'compareAvgCharge', label: 'Peer Avg Charge' }
+    ];
+
+    fixedHeaders.forEach(header => {
+        const th = document.createElement('th');
+        th.className = 'sortable-header';
+        th.dataset.column = header.column;
+        th.innerHTML = `${header.label}<span class="sort-icon"></span>`;
+        tableHeaders.appendChild(th);
+    });
+
+    // Get top 40 hospitals by net_patient_revenue
+    // If using national average, use all available hospitals, otherwise use compareHospitals
+    let hospitalsToShow;
+    if (results.useNationalAverage) {
+        // Get all hospitals and limit to top 40 by revenue
+        hospitalsToShow = AppState.hospitalsArray
+            .slice(0, 40); // Already sorted by net_patient_revenue in descending order
+    } else {
+        // Limit compareHospitals to top 40 by net_patient_revenue
+        hospitalsToShow = results.compareHospitals
+            .slice() // Create a copy to avoid modifying original
+            .sort((a, b) => (b.net_patient_revenue || 0) - (a.net_patient_revenue || 0))
+            .slice(0, 40);
+    }
+
+    // Dynamic peer hospital columns
+    hospitalsToShow.forEach(hospital => {
+        const th = document.createElement('th');
+        th.className = 'sortable-header';
+        th.dataset.column = `hospital_${hospital.provnum}`;
+        th.innerHTML = `${hospital.name}<span class="sort-icon"></span>`;
+        th.style.minWidth = '150px';
+        tableHeaders.appendChild(th);
+    });
+
+    // Build table data
+    const breakdownData = results.procedureComparisons.map(proc => {
+        const row = {
+            code: proc.code,
+            name: proc.name,
+            hospitalsCount: proc.hospitalsCount,
+            targetVolume: proc.targetVolume,
+            targetRevenue: proc.targetRevenue,
+            targetAvgCharge: proc.targetAvgCharge,
+            compareAvgCharge: proc.compareAvgCharge
+        };
+
+        // Add each peer hospital's charge for this procedure (top 40 only)
+        hospitalsToShow.forEach(hospital => {
+            const hospitalProc = hospital.procedures ? hospital.procedures[proc.code] : null;
+            row[`hospital_${hospital.provnum}`] = (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null)
+                ? hospitalProc.avg_charge
+                : null;
+        });
+
+        return row;
+    });
+
+    // Sort the data
+    breakdownData.sort((a, b) => {
+        let aVal = a[sortColumn];
+        let bVal = b[sortColumn];
+
+        // Handle null values
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+
+        // Handle string sorting
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (sortDirection === 'asc') {
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+    });
+
+    // Render table rows
+    const fragment = document.createDocumentFragment();
+
+    breakdownData.forEach(item => {
+        const row = document.createElement('tr');
+
+        // Fixed columns
+        row.innerHTML = `
+            <td class="code-cell">${item.code}</td>
+            <td>${item.name}</td>
+            <td class="number-cell">${item.hospitalsCount}</td>
+            <td class="number-cell">${item.targetVolume.toLocaleString()}</td>
+            <td class="number-cell">$${item.targetRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+            <td class="number-cell">$${item.targetAvgCharge.toFixed(2)}</td>
+            <td class="number-cell">$${item.compareAvgCharge.toFixed(2)}</td>
+        `;
+
+        // Dynamic peer hospital columns
+        hospitalsToShow.forEach(hospital => {
+            const td = document.createElement('td');
+            td.className = 'number-cell';
+            const charge = item[`hospital_${hospital.provnum}`];
+            td.textContent = (charge != null && charge !== undefined) ? `$${charge.toFixed(2)}` : '-';
+            row.appendChild(td);
+        });
+
+        fragment.appendChild(row);
+    });
+
+    tableBody.appendChild(fragment);
+}
+
+/**
  * Setup table sorting
  */
 function setupTableSorting() {
@@ -1090,6 +1479,10 @@ function setupTableSorting() {
  * Handle sort click
  */
 function handleSort(column, headerElement) {
+    // Determine which table this header belongs to
+    const table = headerElement.closest('table');
+    const tableId = table ? table.id : null;
+
     // Update sort state
     if (AppState.currentSort.column === column) {
         AppState.currentSort.direction = AppState.currentSort.direction === 'asc' ? 'desc' : 'asc';
@@ -1098,8 +1491,8 @@ function handleSort(column, headerElement) {
         AppState.currentSort.direction = 'asc';
     }
 
-    // Update header classes
-    document.querySelectorAll('.sortable-header').forEach(h => {
+    // Update header classes only within this table
+    table.querySelectorAll('.sortable-header').forEach(h => {
         h.classList.remove('active', 'asc', 'desc');
         h.querySelector('.sort-icon').textContent = '';
     });
@@ -1107,10 +1500,18 @@ function handleSort(column, headerElement) {
     headerElement.classList.add('active', AppState.currentSort.direction);
     headerElement.querySelector('.sort-icon').textContent = AppState.currentSort.direction === 'asc' ? '▲' : '▼';
 
-    // Re-sort and display
+    // Re-sort and display the appropriate table
     if (AppState.currentResults) {
-        sortProcedureComparisons(AppState.currentResults.procedureComparisons);
-        displayProcedureTable(AppState.currentResults);
+        if (tableId === 'procedure-table') {
+            sortProcedureComparisons(AppState.currentResults.procedureComparisons);
+            displayProcedureTable(AppState.currentResults);
+        } else if (tableId === 'hospital-table') {
+            displayHospitalTable(AppState.currentResults, column, AppState.currentSort.direction);
+        } else if (tableId === 'category-table') {
+            displayCategoryTable(AppState.currentResults, column, AppState.currentSort.direction);
+        } else if (tableId === 'breakdown-table') {
+            displayBreakdownTable(AppState.currentResults, column, AppState.currentSort.direction);
+        }
     }
 }
 
@@ -1243,6 +1644,43 @@ function scrollToTop() {
         top: 0,
         behavior: 'smooth'
     });
+}
+
+/**
+ * Setup tab switching functionality
+ */
+function setupTabSwitching() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.tab;
+            switchTab(tabName);
+        });
+    });
+}
+
+/**
+ * Switch to a specific tab
+ */
+function switchTab(tabName) {
+    // Remove active class from all buttons and panels
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+
+    // Add active class to selected button and panel
+    const activeButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+    const activePanel = document.getElementById(`tab-${tabName}`);
+
+    if (activeButton && activePanel) {
+        activeButton.classList.add('active');
+        activePanel.classList.add('active');
+    }
 }
 
 /**
