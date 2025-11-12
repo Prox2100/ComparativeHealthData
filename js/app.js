@@ -981,18 +981,93 @@ function displayResults(results) {
     document.getElementById('target-name').textContent = targetDisplay;
     document.getElementById('compare-name').textContent = compareDisplay;
 
-    const varianceElement = document.getElementById('overall-variance');
-    const variance = results.overall.variance;
-    varianceElement.textContent = `${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%`;
-    varianceElement.className = variance > 0 ? 'large-number variance-positive'
-        : variance < 0 ? 'large-number variance-negative'
-            : 'large-number variance-neutral';
-
     displayOverallMetrics(results);
     displayProcedureTable(results);
     displayHospitalTable(results);
     displayCategoryTable(results);
     displayBreakdownTable(results);
+}
+
+/**
+ * Calculate state market position
+ * Compares target hospitals against all hospitals in the same state(s)
+ */
+function calculateStateMarketPosition(results) {
+    // Get all unique states from target hospitals
+    const targetStates = new Set();
+    results.targetHospitals.forEach(hospital => {
+        if (hospital.state) {
+            targetStates.add(hospital.state);
+        }
+    });
+
+    if (targetStates.size === 0) return 0;
+
+    // Filter all hospitals by target states
+    const stateHospitals = AppState.hospitalsArray.filter(h =>
+        targetStates.has(h.state) && h.procedures
+    );
+
+    if (stateHospitals.length === 0) return 0;
+
+    // Calculate weighted average for state hospitals using same procedure codes
+    let stateTotalRevenue = 0;
+    let stateTotalVolume = 0;
+
+    results.procedureComparisons.forEach(proc => {
+        stateHospitals.forEach(hospital => {
+            const hospitalProc = hospital.procedures[proc.code];
+            if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
+                stateTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;
+                stateTotalVolume += hospitalProc.volume;
+            }
+        });
+    });
+
+    if (stateTotalVolume === 0 || !results.overall.targetVolume || results.overall.targetVolume === 0) return 0;
+
+    const stateAvgCharge = stateTotalRevenue / stateTotalVolume;
+    const targetAvgCharge = results.overall.targetTotalRevenue / results.overall.targetVolume;
+
+    if (stateAvgCharge === 0) return 0;
+
+    // Calculate variance: (target - state) / state * 100
+    return ((targetAvgCharge - stateAvgCharge) / stateAvgCharge) * 100;
+}
+
+/**
+ * Calculate national market position
+ * Compares target hospitals against all hospitals nationally
+ */
+function calculateNationalMarketPosition(results) {
+    // Use all hospitals with procedures
+    const nationalHospitals = AppState.hospitalsArray.filter(h => h.procedures);
+
+    if (nationalHospitals.length === 0) return 0;
+
+    // Calculate weighted average for national hospitals using same procedure codes
+    let nationalTotalRevenue = 0;
+    let nationalTotalVolume = 0;
+
+    results.procedureComparisons.forEach(proc => {
+        nationalHospitals.forEach(hospital => {
+            const hospitalProc = hospital.procedures[proc.code];
+            if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
+                nationalTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;
+                nationalTotalVolume += hospitalProc.volume;
+            }
+        });
+    });
+
+    if (nationalTotalVolume === 0 || !results.overall.targetVolume || results.overall.targetVolume === 0) return 0;
+
+    const nationalAvgCharge = nationalTotalRevenue / nationalTotalVolume;
+    const targetAvgCharge = results.overall.targetTotalRevenue / results.overall.targetVolume;
+
+    if (nationalAvgCharge === 0) return 0;
+
+    // Calculate variance: (target - national) / national * 100
+    return ((targetAvgCharge - nationalAvgCharge) / nationalAvgCharge) * 100;
 }
 
 /**
@@ -1002,26 +1077,47 @@ function displayOverallMetrics(results) {
     const metricsContainer = document.getElementById('overall-metrics');
     metricsContainer.innerHTML = '';
 
+    // Validate results.overall exists and has required properties
+    if (!results.overall || results.overall.variance === undefined) {
+        console.error('Missing results.overall data');
+        return;
+    }
+
+    // Calculate market positions
+    const peerGroupPosition = results.overall.variance; // Already calculated (% above/below peers)
+    const stateMarketPosition = calculateStateMarketPosition(results);
+    const nationalMarketPosition = calculateNationalMarketPosition(results);
+
     const metrics = [
         {
             label: 'Procedures Compared',
             value: results.overall.procedureCount.toLocaleString(),
-            subvalue: `${results.overall.targetVolume.toLocaleString()} total cases`
+            subvalue: `${results.overall.targetVolume.toLocaleString()} total cases`,
+            isPosition: false
         },
         {
-            label: 'Target Total Revenue',
-            value: `$${results.overall.targetTotalRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}`,
-            subvalue: 'Total charges'
+            label: 'Peer Group Market Position',
+            value: `${Math.abs(peerGroupPosition).toFixed(1)}%`,
+            subvalue: peerGroupPosition < 0 ? 'Below peer average' : 'Above peer average',
+            isPosition: true,
+            positionValue: peerGroupPosition,
+            showTriangle: true
         },
         {
-            label: 'Comparison Total Revenue',
-            value: `$${results.overall.compareTotalRevenue.toLocaleString('en-US', {maximumFractionDigits: 0})}`,
-            subvalue: results.useNationalAverage ? 'National average' : 'Peer group total'
+            label: 'State Market Position',
+            value: `${Math.abs(stateMarketPosition).toFixed(1)}%`,
+            subvalue: stateMarketPosition < 0 ? 'Below state average' : 'Above state average',
+            isPosition: true,
+            positionValue: stateMarketPosition,
+            showTriangle: true
         },
         {
-            label: 'Revenue Difference',
-            value: `${results.overall.difference >= 0 ? '+' : ''}$${Math.abs(results.overall.difference).toLocaleString('en-US', {maximumFractionDigits: 0})}`,
-            subvalue: `${results.overall.variance >= 0 ? '+' : ''}${results.overall.variance.toFixed(1)}% variance`
+            label: 'National Market Position',
+            value: `${Math.abs(nationalMarketPosition).toFixed(1)}%`,
+            subvalue: nationalMarketPosition < 0 ? 'Below national average' : 'Above national average',
+            isPosition: true,
+            positionValue: nationalMarketPosition,
+            showTriangle: true
         }
     ];
 
@@ -1029,9 +1125,24 @@ function displayOverallMetrics(results) {
         const card = document.createElement('div');
         card.className = 'metric-card';
 
+        // Add color coding for market position cards
+        if (metric.isPosition) {
+            const colorClass = metric.positionValue < 0 ? 'position-favorable' : 'position-unfavorable';
+            card.classList.add(colorClass);
+        }
+
+        // Add triangle indicator for position cards
+        let valueContent = metric.value;
+        if (metric.showTriangle) {
+            const triangle = metric.positionValue < 0
+                ? '<span class="triangle-down">▼</span>'
+                : '<span class="triangle-up">▲</span>';
+            valueContent = `${metric.value} ${triangle}`;
+        }
+
         card.innerHTML = `
             <div class="metric-label">${metric.label}</div>
-            <div class="metric-value">${metric.value}</div>
+            <div class="metric-value">${valueContent}</div>
             <div class="metric-subvalue">${metric.subvalue}</div>
         `;
 

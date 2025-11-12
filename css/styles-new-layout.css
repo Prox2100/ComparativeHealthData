@@ -302,6 +302,10 @@
     margin-top: 0 !important;
 }
 
+.summary-cards-2col {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
 .summary-card {
     padding: var(--space-4) !important;
 }
@@ -387,10 +391,56 @@
 .metric-label {
     font-size: 11px !important;
     margin-bottom: var(--space-1) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
 }
 
 .metric-value {
-    font-size: 20px !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+}
+
+/* Market Position Color Coding */
+.metric-card.position-favorable {
+    border-left: 4px solid var(--color-primary);
+    background: linear-gradient(to right, rgba(20, 184, 166, 0.05), transparent);
+}
+
+.metric-card.position-favorable .metric-value {
+    color: var(--color-success);
+    font-weight: 700;
+}
+
+.metric-card.position-unfavorable {
+    border-left: 4px solid var(--color-primary);
+    background: linear-gradient(to right, rgba(20, 184, 166, 0.05), transparent);
+}
+
+.metric-card.position-unfavorable .metric-value {
+    color: var(--color-error);
+    font-weight: 700;
+}
+
+/* Triangle indicators */
+.triangle-up {
+    color: var(--color-error);
+    font-size: 26px;
+    margin-left: 10px;
+    vertical-align: baseline;
+    font-weight: 900;
+    display: inline-block;
+    line-height: 1;
+}
+
+.triangle-down {
+    color: var(--color-success);
+    font-size: 26px;
+    margin-left: 10px;
+    vertical-align: baseline;
+    font-weight: 900;
+    display: inline-block;
+    line-height: 1;
 }
 
 /* ==================================
