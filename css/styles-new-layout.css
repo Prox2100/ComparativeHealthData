@@ -444,6 +444,55 @@
 }
 
 /* ==================================
+   OUTLIER LOGIC SECTION - v2
+   ================================== */
+
+.outlier-logic-section {
+    margin-top: 40px !important;
+    padding-top: 28px !important;
+    border-top: 2px solid var(--color-gray-300) !important;
+}
+
+.outlier-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 28px !important;
+    gap: 20px !important;
+    padding-bottom: 4px !important;
+}
+
+.outlier-title {
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #111827 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.3px !important;
+    text-transform: none !important;
+}
+
+.outlier-controls:not(.hidden) {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 28px !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.outlier-controls.hidden {
+    display: none !important;
+}
+
+.outlier-controls .filter-item .help-text-small {
+    margin-top: 4px !important;
+    font-size: 10px !important;
+    color: #6b7280 !important;
+    line-height: 1.3 !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+}
+
+/* ==================================
    PROCEDURE COMPARISON TABLE
    ================================== */
 

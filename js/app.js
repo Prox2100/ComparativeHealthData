@@ -39,6 +39,12 @@ const AppState = {
             bedsMin: '',
             bedsMax: ''
         }
+    },
+    outlierLogic: {
+        enabled: false,
+        minHospitals: 3,
+        minVolume: 5,
+        stdDev: 2.0
     }
 };
 
@@ -81,7 +87,14 @@ const DOM = {
     resultsContent: document.getElementById('results-content'),
     exportCsv: document.getElementById('export-csv'),
     exportPdf: document.getElementById('export-pdf'),
-    procedureTable: document.getElementById('procedure-table')
+    procedureTable: document.getElementById('procedure-table'),
+
+    // Outlier logic elements
+    outlierToggle: document.getElementById('outlier-toggle'),
+    outlierControls: document.getElementById('outlier-controls'),
+    minHospitals: document.getElementById('min-hospitals'),
+    minVolume: document.getElementById('min-volume'),
+    stdDev: document.getElementById('std-dev')
 };
 
 /**
@@ -276,6 +289,39 @@ function setupEventListeners() {
     // Advanced filter changes
     setupAdvancedFilterListeners('target');
     setupAdvancedFilterListeners('compare');
+
+    // Outlier logic controls
+    DOM.outlierToggle.addEventListener('change', () => {
+        AppState.outlierLogic.enabled = DOM.outlierToggle.checked;
+        if (AppState.outlierLogic.enabled) {
+            DOM.outlierControls.classList.remove('hidden');
+            DOM.outlierControls.style.display = 'flex';
+        } else {
+            DOM.outlierControls.classList.add('hidden');
+            DOM.outlierControls.style.display = 'none';
+        }
+    });
+
+    DOM.minHospitals.addEventListener('input', () => {
+        const value = parseInt(DOM.minHospitals.value);
+        if (!isNaN(value) && value > 0) {
+            AppState.outlierLogic.minHospitals = value;
+        }
+    });
+
+    DOM.minVolume.addEventListener('input', () => {
+        const value = parseInt(DOM.minVolume.value);
+        if (!isNaN(value) && value > 0) {
+            AppState.outlierLogic.minVolume = value;
+        }
+    });
+
+    DOM.stdDev.addEventListener('input', () => {
+        const value = parseFloat(DOM.stdDev.value);
+        if (!isNaN(value) && value >= 0.5 && value <= 5) {
+            AppState.outlierLogic.stdDev = value;
+        }
+    });
 
     // Action buttons
     DOM.compareButton.addEventListener('click', () => {
@@ -777,6 +823,57 @@ async function performComparison() {
 }
 
 /**
+ * Apply outlier logic filters to hospitals for a specific procedure code
+ * Returns filtered hospitals that pass all outlier criteria
+ */
+function applyOutlierFilters(hospitals, code, outlierSettings) {
+    if (!outlierSettings.enabled) {
+        return hospitals; // No filtering if outlier logic is disabled
+    }
+
+    // Step 1: Filter by minimum volume
+    let filteredHospitals = hospitals.filter(hospital => {
+        const proc = hospital.procedures[code];
+        return proc && proc.volume >= outlierSettings.minVolume;
+    });
+
+    // Step 2: Check minimum hospitals requirement
+    if (filteredHospitals.length < outlierSettings.minHospitals) {
+        return []; // Not enough hospitals, exclude this procedure entirely
+    }
+
+    // Step 3: Apply standard deviation filter
+    // Calculate mean and standard deviation of charges
+    const charges = filteredHospitals
+        .map(hospital => hospital.procedures[code].avg_charge)
+        .filter(charge => charge != null && charge > 0);
+
+    if (charges.length === 0) {
+        return [];
+    }
+
+    // Calculate mean
+    const mean = charges.reduce((sum, charge) => sum + charge, 0) / charges.length;
+
+    // Calculate standard deviation
+    const squaredDiffs = charges.map(charge => Math.pow(charge - mean, 2));
+    const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / charges.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Filter hospitals outside the acceptable range
+    const lowerBound = mean - (outlierSettings.stdDev * stdDev);
+    const upperBound = mean + (outlierSettings.stdDev * stdDev);
+
+    filteredHospitals = filteredHospitals.filter(hospital => {
+        const proc = hospital.procedures[code];
+        if (!proc || proc.avg_charge == null) return false;
+        return proc.avg_charge >= lowerBound && proc.avg_charge <= upperBound;
+    });
+
+    return filteredHospitals;
+}
+
+/**
  * Calculate price comparison
  */
 function calculateComparison(targetProvnums, compareProvnums, procedureFilters, useNationalAverage, targetDescription, compareDescription) {
@@ -870,12 +967,18 @@ function calculateComparison(targetProvnums, compareProvnums, procedureFilters, 
             compareTotalVol = nationalAvg.totalVolume;
             compareCount = nationalAvg.hospitalCount;
         } else {
-            // Use selected hospitals - calculate weighted average
+            // Use selected hospitals - calculate weighted average with outlier filtering
+            // Apply outlier logic filters if enabled
+            const filteredCompareHospitals = applyOutlierFilters(compareHospitals, code, AppState.outlierLogic);
+
+            // If outlier logic filtered out all hospitals or didn't meet min hospitals, skip this procedure
+            if (filteredCompareHospitals.length === 0) return;
+
             let compareTotalCharges = 0;
             compareTotalVol = 0;
             compareCount = 0;
 
-            compareHospitals.forEach(hospital => {
+            filteredCompareHospitals.forEach(hospital => {
                 const proc = hospital.procedures[code];
                 if (proc && proc.volume > 0) {
                     compareTotalCharges += proc.avg_charge * proc.volume;  // Total charges
@@ -1010,12 +1113,15 @@ function calculateStateMarketPosition(results) {
 
     if (stateHospitals.length === 0) return 0;
 
-    // Calculate weighted average for state hospitals using same procedure codes
+    // Calculate weighted average for state hospitals using same procedure codes with outlier filtering
     let stateTotalRevenue = 0;
     let stateTotalVolume = 0;
 
     results.procedureComparisons.forEach(proc => {
-        stateHospitals.forEach(hospital => {
+        // Apply outlier filtering to state hospitals for this procedure
+        const filteredStateHospitals = applyOutlierFilters(stateHospitals, proc.code, AppState.outlierLogic);
+
+        filteredStateHospitals.forEach(hospital => {
             const hospitalProc = hospital.procedures[proc.code];
             if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
                 stateTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;
@@ -1045,12 +1151,15 @@ function calculateNationalMarketPosition(results) {
 
     if (nationalHospitals.length === 0) return 0;
 
-    // Calculate weighted average for national hospitals using same procedure codes
+    // Calculate weighted average for national hospitals using same procedure codes with outlier filtering
     let nationalTotalRevenue = 0;
     let nationalTotalVolume = 0;
 
     results.procedureComparisons.forEach(proc => {
-        nationalHospitals.forEach(hospital => {
+        // Apply outlier filtering to national hospitals for this procedure
+        const filteredNationalHospitals = applyOutlierFilters(nationalHospitals, proc.code, AppState.outlierLogic);
+
+        filteredNationalHospitals.forEach(hospital => {
             const hospitalProc = hospital.procedures[proc.code];
             if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
                 nationalTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;

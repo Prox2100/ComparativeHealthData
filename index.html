@@ -236,6 +236,35 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Outlier Logic Section v3 -->
+                            <div class="outlier-logic-section" style="margin-top: 40px; padding-top: 28px; border-top: 2px solid #d1d5db;">
+                                <div class="outlier-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; gap: 20px;">
+                                    <span class="outlier-title" style="font-size: 16px !important; font-weight: 600 !important; color: #111827 !important; line-height: 1.2 !important; letter-spacing: -0.2px !important;">Use Outlier Logic</span>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="outlier-toggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div id="outlier-controls" class="outlier-controls hidden" style="display: none; flex-direction: column; gap: 28px; margin-top: 28px;">
+                                    <div class="filter-item">
+                                        <label for="min-hospitals">Min Hospitals</label>
+                                        <input type="number" id="min-hospitals" class="filter-input" placeholder="e.g., 3" min="1" value="3">
+                                        <p class="help-text-small" style="margin-top: 4px !important; font-size: 10px !important; color: #6b7280 !important; line-height: 1.3 !important; font-style: italic !important;">Min hospitals per CPT/HCPCS for inclusion</p>
+                                    </div>
+                                    <div class="filter-item">
+                                        <label for="min-volume">Min Volume</label>
+                                        <input type="number" id="min-volume" class="filter-input" placeholder="e.g., 5" min="1" value="5">
+                                        <p class="help-text-small" style="margin-top: 4px !important; font-size: 10px !important; color: #6b7280 !important; line-height: 1.3 !important; font-style: italic !important;">Exclude hospitals with volume below threshold</p>
+                                    </div>
+                                    <div class="filter-item">
+                                        <label for="std-dev">Standard Deviations</label>
+                                        <input type="number" id="std-dev" class="filter-input" placeholder="e.g., 2.0" min="0.5" max="5" step="0.1" value="2.0">
+                                        <p class="help-text-small" style="margin-top: 4px !important; font-size: 10px !important; color: #6b7280 !important; line-height: 1.3 !important; font-style: italic !important;">Exclude charges beyond X std devs from mean (2.0 = ~95%)</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <button class="btn-secondary btn-small" id="compare-clear-filters">Clear Search</button>
                         </div>
                     </div>
