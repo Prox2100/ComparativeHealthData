@@ -110,6 +110,7 @@ async function init() {
         initializeAdvancedFilters();
         setupEventListeners();
         calculateNationalAverages();
+        initSaveLoadFeatures();
 
         console.log('App initialized successfully!');
         hideMessage();
@@ -120,17 +121,77 @@ async function init() {
 }
 
 /**
- * Load hospital data from JSON file
+ * Load hospital data from chunked JSON files
  */
 async function loadHospitalData() {
     try {
-        const response = await fetch('data/hospital_data.json');
-        if (!response.ok) {
-            throw new Error('Failed to fetch hospital data');
-        }
-        AppState.hospitalData = await response.json();
+        console.log('[DEBUG] Starting to fetch hospital data in chunks...');
 
-        // Convert to array and sort by net_patient_revenue (descending) for better performance
+        const loadingMsg = document.getElementById('loadingMessage');
+        if (loadingMsg) {
+            loadingMsg.textContent = 'Loading hospital data in chunks...';
+        }
+
+        // Load the index to know how many chunks we have
+        console.log('[DEBUG] Loading chunk index...');
+        const indexResponse = await fetch('data/chunks/index.json');
+        if (!indexResponse.ok) {
+            throw new Error('Failed to load chunk index');
+        }
+        const index = await indexResponse.json();
+
+        console.log(`[DEBUG] Found ${index.chunks.length} chunks with ${index.total_hospitals} total hospitals`);
+
+        // Load metadata
+        if (loadingMsg) {
+            loadingMsg.textContent = 'Loading metadata...';
+        }
+        console.log('[DEBUG] Loading metadata...');
+        const metadataResponse = await fetch('data/chunks/metadata.json');
+        if (!metadataResponse.ok) {
+            throw new Error('Failed to load metadata');
+        }
+        const metadata = await metadataResponse.json();
+
+        // Initialize hospital data structure
+        AppState.hospitalData = {
+            hospitals: {},
+            ...metadata
+        };
+
+        // Load chunks progressively
+        console.log('[DEBUG] Loading hospital chunks...');
+        for (let i = 0; i < index.chunks.length; i++) {
+            const chunkInfo = index.chunks[i];
+            const chunkNum = i + 1;
+            const totalChunks = index.chunks.length;
+
+            if (loadingMsg) {
+                loadingMsg.textContent = `Loading hospitals: chunk ${chunkNum}/${totalChunks} (${chunkInfo.hospitals} hospitals, ${chunkInfo.size_mb}MB)`;
+            }
+
+            console.log(`[DEBUG] Loading chunk ${chunkNum}/${totalChunks}: ${chunkInfo.file}`);
+
+            const chunkResponse = await fetch(`data/chunks/${chunkInfo.file}`);
+            if (!chunkResponse.ok) {
+                throw new Error(`Failed to load chunk ${chunkInfo.file}`);
+            }
+
+            const chunkData = await chunkResponse.json();
+
+            // Merge chunk into main hospitals object
+            Object.assign(AppState.hospitalData.hospitals, chunkData);
+
+            console.log(`[DEBUG] Loaded chunk ${chunkNum}/${totalChunks}, total hospitals so far: ${Object.keys(AppState.hospitalData.hospitals).length}`);
+        }
+
+        if (loadingMsg) {
+            loadingMsg.textContent = 'Building search index... Almost done...';
+        }
+
+        console.log('[DEBUG] Building hospital array and search index...');
+
+        // Convert to array and sort
         AppState.hospitalsArray = Object.values(AppState.hospitalData.hospitals)
             .map(h => ({
                 ...h,
@@ -138,7 +199,7 @@ async function loadHospitalData() {
             }))
             .sort((a, b) => (b.net_patient_revenue || 0) - (a.net_patient_revenue || 0));
 
-        console.log(`Loaded data for ${AppState.hospitalsArray.length} hospitals`);
+        console.log(`[INFO] Successfully loaded data for ${AppState.hospitalsArray.length} hospitals`);
     } catch (error) {
         console.error('Error loading hospital data:', error);
         throw error;
@@ -231,10 +292,12 @@ function initializeAdvancedFilters() {
 function setupEventListeners() {
     // Target hospital search
     DOM.targetSearchInput.addEventListener('input', debounce((e) => {
+        console.log('Target search input:', e.target.value);
         filterHospitals(e.target.value, 'target');
     }, 150));
 
     DOM.targetSearchInput.addEventListener('focus', () => {
+        console.log('Target search focused');
         DOM.targetDropdown.classList.remove('hidden');
         filterHospitals(DOM.targetSearchInput.value, 'target');
     });
@@ -1044,7 +1107,9 @@ function calculateComparison(targetProvnums, compareProvnums, procedureFilters, 
             variance: overallVariance,
             procedureCount: procedureComparisons.length,
             targetVolume: targetTotalVolume
-        }
+        },
+        // Store comparison filters for state market position calculation
+        compareFilters: { ...AppState.filters.compare }
     };
 }
 
@@ -1093,7 +1158,9 @@ function displayResults(results) {
 
 /**
  * Calculate state market position
- * Compares target hospitals against all hospitals in the same state(s)
+ * ALWAYS compares target hospitals against ALL hospitals in the same state(s)
+ * This calculation is independent of peer selection and advanced filters
+ * Uses ALL target procedures, not just those matching peer hospitals
  */
 function calculateStateMarketPosition(results) {
     // Get all unique states from target hospitals
@@ -1104,79 +1171,182 @@ function calculateStateMarketPosition(results) {
         }
     });
 
-    if (targetStates.size === 0) return 0;
+    if (targetStates.size === 0) {
+        console.log('[State Market Position] No target states found');
+        return 0;
+    }
 
-    // Filter all hospitals by target states
+    // ALWAYS use ALL hospitals in the target state(s), regardless of peer selection or filters
     const stateHospitals = AppState.hospitalsArray.filter(h =>
         targetStates.has(h.state) && h.procedures
     );
 
-    if (stateHospitals.length === 0) return 0;
+    if (stateHospitals.length === 0) {
+        console.log('[State Market Position] No hospitals found in target states');
+        return 0;
+    }
 
-    // Calculate weighted average for state hospitals using same procedure codes with outlier filtering
-    let stateTotalRevenue = 0;
-    let stateTotalVolume = 0;
+    console.log(`[State Market Position] Comparing against ${stateHospitals.length} hospitals in state(s): ${Array.from(targetStates).join(', ')}`);
 
-    results.procedureComparisons.forEach(proc => {
-        // Apply outlier filtering to state hospitals for this procedure
-        const filteredStateHospitals = applyOutlierFilters(stateHospitals, proc.code, AppState.outlierLogic);
+    // Get ALL procedures from target hospitals (not just those matching peers)
+    const allTargetProcedures = new Map(); // code -> {totalCharge, totalVolume}
 
-        filteredStateHospitals.forEach(hospital => {
-            const hospitalProc = hospital.procedures[proc.code];
-            if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
-                stateTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;
-                stateTotalVolume += hospitalProc.volume;
-            }
-        });
+    results.targetHospitals.forEach(hospital => {
+        if (hospital.procedures) {
+            Object.entries(hospital.procedures).forEach(([code, procData]) => {
+                if (procData.volume > 0 && procData.avg_charge != null) {
+                    if (!allTargetProcedures.has(code)) {
+                        allTargetProcedures.set(code, {
+                            totalCharge: 0,
+                            totalVolume: 0
+                        });
+                    }
+                    const existing = allTargetProcedures.get(code);
+                    existing.totalCharge += procData.avg_charge * procData.volume;
+                    existing.totalVolume += procData.volume;
+                }
+            });
+        }
     });
 
-    if (stateTotalVolume === 0 || !results.overall.targetVolume || results.overall.targetVolume === 0) return 0;
+    console.log(`[State Market Position] Using ${allTargetProcedures.size} procedures from target hospital(s)`);
 
-    const stateAvgCharge = stateTotalRevenue / stateTotalVolume;
-    const targetAvgCharge = results.overall.targetTotalRevenue / results.overall.targetVolume;
+    // Calculate state average using volume-weighted methodology
+    let stateWeightedRevenue = 0;
+    let stateWeightedVolume = 0;
+    let targetWeightedRevenue = 0;
+    let targetWeightedVolume = 0;
 
-    if (stateAvgCharge === 0) return 0;
+    allTargetProcedures.forEach((targetData, code) => {
+        // Apply outlier filtering to state hospitals for this procedure
+        const filteredStateHospitals = applyOutlierFilters(stateHospitals, code, AppState.outlierLogic);
+
+        // Calculate simple average of charges for this procedure across state hospitals
+        let totalCharge = 0;
+        let hospitalCount = 0;
+
+        filteredStateHospitals.forEach(hospital => {
+            const hospitalProc = hospital.procedures[code];
+            if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
+                totalCharge += hospitalProc.avg_charge;
+                hospitalCount++;
+            }
+        });
+
+        if (hospitalCount > 0) {
+            const stateAvgForProc = totalCharge / hospitalCount;
+            const targetAvgForProc = targetData.totalCharge / targetData.totalVolume;
+
+            // Weight by target volume for this procedure
+            stateWeightedRevenue += stateAvgForProc * targetData.totalVolume;
+            stateWeightedVolume += targetData.totalVolume;
+            targetWeightedRevenue += targetAvgForProc * targetData.totalVolume;
+            targetWeightedVolume += targetData.totalVolume;
+        }
+    });
+
+    if (stateWeightedVolume === 0 || targetWeightedVolume === 0) {
+        console.log('[State Market Position] Insufficient volume data');
+        return 0;
+    }
+
+    const stateAvgCharge = stateWeightedRevenue / stateWeightedVolume;
+    const targetAvgCharge = targetWeightedRevenue / targetWeightedVolume;
+
+    if (stateAvgCharge === 0) {
+        console.log('[State Market Position] State average charge is 0');
+        return 0;
+    }
 
     // Calculate variance: (target - state) / state * 100
-    return ((targetAvgCharge - stateAvgCharge) / stateAvgCharge) * 100;
+    const variance = ((targetAvgCharge - stateAvgCharge) / stateAvgCharge) * 100;
+
+    console.log(`[State Market Position] Target avg: $${targetAvgCharge.toFixed(2)}, State avg: $${stateAvgCharge.toFixed(2)}, Variance: ${variance.toFixed(2)}%`);
+
+    return variance;
 }
 
 /**
  * Calculate national market position
- * Compares target hospitals against all hospitals nationally
+ * ALWAYS compares target hospitals against ALL hospitals nationally
+ * This calculation is independent of peer selection and advanced filters
+ * Uses ALL target procedures, not just those matching peer hospitals
+ * Uses pre-calculated national averages for efficiency
  */
 function calculateNationalMarketPosition(results) {
-    // Use all hospitals with procedures
+    // ALWAYS use ALL hospitals nationally, regardless of peer selection or filters
     const nationalHospitals = AppState.hospitalsArray.filter(h => h.procedures);
 
-    if (nationalHospitals.length === 0) return 0;
+    if (nationalHospitals.length === 0) {
+        console.log('[National Market Position] No hospitals with procedures found');
+        return 0;
+    }
 
-    // Calculate weighted average for national hospitals using same procedure codes with outlier filtering
-    let nationalTotalRevenue = 0;
-    let nationalTotalVolume = 0;
+    console.log(`[National Market Position] Comparing against ${nationalHospitals.length} hospitals nationally`);
 
-    results.procedureComparisons.forEach(proc => {
-        // Apply outlier filtering to national hospitals for this procedure
-        const filteredNationalHospitals = applyOutlierFilters(nationalHospitals, proc.code, AppState.outlierLogic);
+    // Get ALL procedures from target hospitals (not just those matching peers)
+    const allTargetProcedures = new Map(); // code -> {totalCharge, totalVolume}
 
-        filteredNationalHospitals.forEach(hospital => {
-            const hospitalProc = hospital.procedures[proc.code];
-            if (hospitalProc && hospitalProc.volume > 0 && hospitalProc.avg_charge != null) {
-                nationalTotalRevenue += hospitalProc.avg_charge * hospitalProc.volume;
-                nationalTotalVolume += hospitalProc.volume;
-            }
-        });
+    results.targetHospitals.forEach(hospital => {
+        if (hospital.procedures) {
+            Object.entries(hospital.procedures).forEach(([code, procData]) => {
+                if (procData.volume > 0 && procData.avg_charge != null) {
+                    if (!allTargetProcedures.has(code)) {
+                        allTargetProcedures.set(code, {
+                            totalCharge: 0,
+                            totalVolume: 0
+                        });
+                    }
+                    const existing = allTargetProcedures.get(code);
+                    existing.totalCharge += procData.avg_charge * procData.volume;
+                    existing.totalVolume += procData.volume;
+                }
+            });
+        }
     });
 
-    if (nationalTotalVolume === 0 || !results.overall.targetVolume || results.overall.targetVolume === 0) return 0;
+    console.log(`[National Market Position] Using ${allTargetProcedures.size} procedures from target hospital(s)`);
 
-    const nationalAvgCharge = nationalTotalRevenue / nationalTotalVolume;
-    const targetAvgCharge = results.overall.targetTotalRevenue / results.overall.targetVolume;
+    // Calculate national average using volume-weighted methodology
+    let nationalWeightedRevenue = 0;
+    let nationalWeightedVolume = 0;
+    let targetWeightedRevenue = 0;
+    let targetWeightedVolume = 0;
 
-    if (nationalAvgCharge === 0) return 0;
+    allTargetProcedures.forEach((targetData, code) => {
+        // Use the pre-calculated national average (already accounts for outliers if enabled)
+        const nationalAvg = AppState.nationalAverages[code];
+
+        if (nationalAvg && nationalAvg.avgCharge > 0) {
+            const targetAvgForProc = targetData.totalCharge / targetData.totalVolume;
+
+            // Weight by target volume for this procedure
+            nationalWeightedRevenue += nationalAvg.avgCharge * targetData.totalVolume;
+            nationalWeightedVolume += targetData.totalVolume;
+            targetWeightedRevenue += targetAvgForProc * targetData.totalVolume;
+            targetWeightedVolume += targetData.totalVolume;
+        }
+    });
+
+    if (nationalWeightedVolume === 0 || targetWeightedVolume === 0) {
+        console.log('[National Market Position] Insufficient volume data');
+        return 0;
+    }
+
+    const nationalAvgCharge = nationalWeightedRevenue / nationalWeightedVolume;
+    const targetAvgCharge = targetWeightedRevenue / targetWeightedVolume;
+
+    if (nationalAvgCharge === 0) {
+        console.log('[National Market Position] National average charge is 0');
+        return 0;
+    }
 
     // Calculate variance: (target - national) / national * 100
-    return ((targetAvgCharge - nationalAvgCharge) / nationalAvgCharge) * 100;
+    const variance = ((targetAvgCharge - nationalAvgCharge) / nationalAvgCharge) * 100;
+
+    console.log(`[National Market Position] Target avg: $${targetAvgCharge.toFixed(2)}, National avg: $${nationalAvgCharge.toFixed(2)}, Variance: ${variance.toFixed(2)}%`);
+
+    return variance;
 }
 
 /**
@@ -1193,16 +1363,26 @@ function displayOverallMetrics(results) {
     }
 
     // Calculate market positions
-    const peerGroupPosition = results.overall.variance; // Already calculated (% above/below peers)
-    const stateMarketPosition = calculateStateMarketPosition(results);
-    const nationalMarketPosition = calculateNationalMarketPosition(results);
+    const peerGroupPosition = results.overall.variance; // % above/below selected peer group
+    const stateMarketPosition = calculateStateMarketPosition(results);  // ALWAYS vs all state hospitals
+    const nationalMarketPosition = calculateNationalMarketPosition(results);  // ALWAYS vs all national hospitals
+
+    // Comprehensive logging for market positions
+    console.log('=== MARKET POSITION SUMMARY ===');
+    console.log('Peer Group Position:', peerGroupPosition.toFixed(2) + '% (compared to selected peer group)');
+    console.log('State Market Position:', stateMarketPosition.toFixed(2) + '% (compared to ALL hospitals in target state(s))');
+    console.log('National Market Position:', nationalMarketPosition.toFixed(2) + '% (compared to ALL hospitals nationally)');
+    console.log('Target Hospitals:', results.targetHospitals.map(h => h.name).join(', '));
+    console.log('Peer Hospitals:', results.compareHospitals.map(h => h.name).join(', '));
+    console.log('===============================');
 
     const metrics = [
         {
             label: 'Procedures Compared',
             value: results.overall.procedureCount.toLocaleString(),
             subvalue: `${results.overall.targetVolume.toLocaleString()} total cases`,
-            isPosition: false
+            isPosition: false,
+            tooltip: 'Number of procedures with matching data between target and peer hospitals'
         },
         {
             label: 'Peer Group Market Position',
@@ -1210,7 +1390,8 @@ function displayOverallMetrics(results) {
             subvalue: peerGroupPosition < 0 ? 'Below peer average' : 'Above peer average',
             isPosition: true,
             positionValue: peerGroupPosition,
-            showTriangle: true
+            showTriangle: true,
+            tooltip: 'Target hospital pricing compared to selected peer hospitals. Changes when you modify peer selection or filters.'
         },
         {
             label: 'State Market Position',
@@ -1218,7 +1399,8 @@ function displayOverallMetrics(results) {
             subvalue: stateMarketPosition < 0 ? 'Below state average' : 'Above state average',
             isPosition: true,
             positionValue: stateMarketPosition,
-            showTriangle: true
+            showTriangle: true,
+            tooltip: 'Target hospital pricing compared to ALL hospitals in the same state(s). Only changes when you change target hospital selection.'
         },
         {
             label: 'National Market Position',
@@ -1226,13 +1408,20 @@ function displayOverallMetrics(results) {
             subvalue: nationalMarketPosition < 0 ? 'Below national average' : 'Above national average',
             isPosition: true,
             positionValue: nationalMarketPosition,
-            showTriangle: true
+            showTriangle: true,
+            tooltip: 'Target hospital pricing compared to ALL hospitals nationally (41,000+ hospitals). Only changes when you change target hospital selection.'
         }
     ];
 
     metrics.forEach(metric => {
         const card = document.createElement('div');
         card.className = 'metric-card';
+
+        // Add tooltip if available
+        if (metric.tooltip) {
+            card.title = metric.tooltip;
+            card.style.cursor = 'help';
+        }
 
         // Add color coding for market position cards
         if (metric.isPosition) {
@@ -1915,6 +2104,453 @@ function showMessage(text, type = 'info') {
  */
 function hideMessage() {
     // Placeholder for future toast notifications
+}
+
+/* ============================================
+   SAVE/LOAD FUNCTIONALITY
+   ============================================ */
+
+// LocalStorage keys
+const STORAGE_KEYS = {
+    SAVED_TARGETS: 'hospital_saved_targets',
+    SAVED_PEERS: 'hospital_saved_peers'
+};
+
+// Current edit state
+let currentEditItem = null;
+let currentEditType = null;
+
+/**
+ * Initialize save/load functionality - SIMPLIFIED VERSION
+ */
+function initSaveLoadFeatures() {
+    console.log('Initializing save/load features...');
+
+    // Save buttons
+    document.getElementById('save-target-btn').addEventListener('click', openSaveTargetModal);
+    document.getElementById('save-peer-btn').addEventListener('click', openSavePeerModal);
+
+    // View Saved buttons
+    document.getElementById('view-saved-target-btn').addEventListener('click', openViewTargetModal);
+    document.getElementById('view-saved-peer-btn').addEventListener('click', openViewPeerModal);
+
+    // Save Target Modal
+    document.getElementById('cancel-save-target').addEventListener('click', closeSaveTargetModal);
+    document.getElementById('confirm-save-target').addEventListener('click', confirmSaveTarget);
+    document.getElementById('save-target-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'save-target-modal') closeSaveTargetModal();
+    });
+    document.getElementById('save-target-name').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') confirmSaveTarget();
+    });
+
+    // Save Peer Modal
+    document.getElementById('cancel-save-peer').addEventListener('click', closeSavePeerModal);
+    document.getElementById('confirm-save-peer').addEventListener('click', confirmSavePeer);
+    document.getElementById('save-peer-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'save-peer-modal') closeSavePeerModal();
+    });
+    document.getElementById('save-peer-name').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') confirmSavePeer();
+    });
+
+    // View Target Modal
+    document.getElementById('close-view-target-modal').addEventListener('click', closeViewTargetModal);
+    document.getElementById('view-saved-target-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'view-saved-target-modal') closeViewTargetModal();
+    });
+
+    // View Peer Modal
+    document.getElementById('close-view-peer-modal').addEventListener('click', closeViewPeerModal);
+    document.getElementById('view-saved-peer-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'view-saved-peer-modal') closeViewPeerModal();
+    });
+
+    // Edit Name Modal
+    document.getElementById('close-edit-name-modal').addEventListener('click', closeEditNameModal);
+    document.getElementById('cancel-edit-name').addEventListener('click', closeEditNameModal);
+    document.getElementById('confirm-edit-name').addEventListener('click', confirmEditName);
+    document.getElementById('edit-name-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-name-modal') closeEditNameModal();
+    });
+    document.getElementById('edit-name-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') confirmEditName();
+    });
+}
+
+/* ================ VIEW SAVED MODALS ================ */
+
+function openViewTargetModal() {
+    console.log('Opening View Target Modal');
+    renderSavedTargetsInGrid();
+    document.getElementById('view-saved-target-modal').classList.remove('hidden');
+}
+
+function closeViewTargetModal() {
+    document.getElementById('view-saved-target-modal').classList.add('hidden');
+}
+
+function openViewPeerModal() {
+    renderSavedPeersInGrid();
+    document.getElementById('view-saved-peer-modal').classList.remove('hidden');
+}
+
+function closeViewPeerModal() {
+    document.getElementById('view-saved-peer-modal').classList.add('hidden');
+}
+
+function renderSavedTargetsInGrid() {
+    const saved = getSavedTargets();
+    const container = document.getElementById('view-target-list');
+    const emptyState = document.getElementById('view-target-empty');
+
+    if (saved.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    container.innerHTML = saved.map(item => `
+        <div class="saved-list-item" onclick="loadTargetFromGrid('${item.id}')">
+            <div class="saved-list-main">
+                <div class="saved-list-name">${escapeHtml(item.name)}</div>
+                <div class="saved-list-details">
+                    <span class="saved-list-count">${item.hospitals.length} hospital${item.hospitals.length !== 1 ? 's' : ''}</span>
+                    <span class="saved-list-separator">•</span>
+                    <span class="saved-list-date">${new Date(item.savedAt).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="saved-list-actions">
+                <button class="list-action-btn edit" onclick="event.stopPropagation(); editSavedItemFromGrid('${item.id}', 'target')" title="Rename">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                    </svg>
+                </button>
+                <button class="list-action-btn delete" onclick="event.stopPropagation(); deleteSavedItemFromGrid('${item.id}', 'target')" title="Delete">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderSavedPeersInGrid() {
+    const saved = getSavedPeers();
+    const container = document.getElementById('view-peer-list');
+    const emptyState = document.getElementById('view-peer-empty');
+
+    if (saved.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    container.innerHTML = saved.map(item => `
+        <div class="saved-list-item" onclick="loadPeerFromGrid('${item.id}')">
+            <div class="saved-list-main">
+                <div class="saved-list-name">${escapeHtml(item.name)}</div>
+                <div class="saved-list-details">
+                    <span class="saved-list-count">${item.hospitals.length} hospital${item.hospitals.length !== 1 ? 's' : ''}</span>
+                    <span class="saved-list-separator">•</span>
+                    <span class="saved-list-date">${new Date(item.savedAt).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="saved-list-actions">
+                <button class="list-action-btn edit" onclick="event.stopPropagation(); editSavedItemFromGrid('${item.id}', 'peer')" title="Rename">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                    </svg>
+                </button>
+                <button class="list-action-btn delete" onclick="event.stopPropagation(); deleteSavedItemFromGrid('${item.id}', 'peer')" title="Delete">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Global functions for grid onclick handlers
+window.loadTargetFromGrid = function(id) {
+    const saved = getSavedTargets();
+    const item = saved.find(i => i.id === id);
+    if (item) {
+        loadTarget(item);
+        closeViewTargetModal();
+    }
+};
+
+window.loadPeerFromGrid = function(id) {
+    const saved = getSavedPeers();
+    const item = saved.find(i => i.id === id);
+    if (item) {
+        loadPeer(item);
+        closeViewPeerModal();
+    }
+};
+
+window.editSavedItemFromGrid = function(id, type) {
+    const saved = type === 'target' ? getSavedTargets() : getSavedPeers();
+    const item = saved.find(i => i.id === id);
+    if (item) {
+        openEditNameModal(item, type);
+    }
+};
+
+window.deleteSavedItemFromGrid = function(id, type) {
+    if (type === 'target') {
+        deleteTarget(id);
+        renderSavedTargetsInGrid();
+    } else {
+        deletePeer(id);
+        renderSavedPeersInGrid();
+    }
+}
+
+/* ================ SAVE TARGET ================ */
+
+function openSaveTargetModal() {
+    console.log('Opening Save Target Modal');
+    // Check if there are selected hospitals or filters
+    const hasSelection = AppState.selectedTargetHospitals.size > 0;
+    const hasFilters = Object.values(AppState.filters.target).some(v => v !== '');
+
+    if (!hasSelection && !hasFilters) {
+        alert('Please select at least one hospital or apply filters before saving');
+        return;
+    }
+
+    document.getElementById('save-target-name').value = '';
+    document.getElementById('save-target-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('save-target-name').focus(), 100);
+}
+
+function closeSaveTargetModal() {
+    document.getElementById('save-target-modal').classList.add('hidden');
+}
+
+function confirmSaveTarget() {
+    const name = document.getElementById('save-target-name').value.trim();
+
+    if (!name) {
+        alert('Please enter a name for this target group');
+        return;
+    }
+
+    const savedData = {
+        id: Date.now().toString(),
+        name: name,
+        hospitals: Array.from(AppState.selectedTargetHospitals),
+        filters: { ...AppState.filters.target },
+        savedAt: new Date().toISOString()
+    };
+
+    // Get existing saved targets
+    const saved = getSavedTargets();
+    saved.push(savedData);
+    localStorage.setItem(STORAGE_KEYS.SAVED_TARGETS, JSON.stringify(saved));
+
+    closeSaveTargetModal();
+    showSuccessMessage(`Saved "${name}" successfully!`);
+}
+
+function getSavedTargets() {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED_TARGETS) || '[]');
+    } catch (e) {
+        console.error('Error loading saved targets:', e);
+        return [];
+    }
+}
+
+// Old load modal functions removed - now using dropdown instead
+
+function loadTarget(item) {
+    // Clear current selection
+    AppState.selectedTargetHospitals.clear();
+
+    // Load saved hospitals
+    item.hospitals.forEach(provnum => {
+        AppState.selectedTargetHospitals.add(provnum);
+    });
+
+    // Load saved filters
+    AppState.filters.target = { ...item.filters };
+
+    // Update UI
+    renderSelectedHospitals('target');
+    updateFilterUI('target');
+
+    showSuccessMessage(`Loaded "${item.name}"!`);
+}
+
+function deleteTarget(id) {
+    if (!confirm('Are you sure you want to delete this saved target?')) return;
+
+    const saved = getSavedTargets();
+    const filtered = saved.filter(item => item.id !== id);
+    localStorage.setItem(STORAGE_KEYS.SAVED_TARGETS, JSON.stringify(filtered));
+
+    showSuccessMessage('Deleted successfully');
+}
+
+/* ================ SAVE PEER GROUP ================ */
+
+function openSavePeerModal() {
+    const hasSelection = AppState.selectedCompareHospitals.size > 0;
+    const hasFilters = Object.values(AppState.filters.compare).some(v => v !== '');
+
+    if (!hasSelection && !hasFilters) {
+        alert('Please select at least one hospital or apply filters before saving');
+        return;
+    }
+
+    document.getElementById('save-peer-name').value = '';
+    document.getElementById('save-peer-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('save-peer-name').focus(), 100);
+}
+
+function closeSavePeerModal() {
+    document.getElementById('save-peer-modal').classList.add('hidden');
+}
+
+function confirmSavePeer() {
+    const name = document.getElementById('save-peer-name').value.trim();
+
+    if (!name) {
+        alert('Please enter a name for this peer group');
+        return;
+    }
+
+    const savedData = {
+        id: Date.now().toString(),
+        name: name,
+        hospitals: Array.from(AppState.selectedCompareHospitals),
+        filters: { ...AppState.filters.compare },
+        savedAt: new Date().toISOString()
+    };
+
+    const saved = getSavedPeers();
+    saved.push(savedData);
+    localStorage.setItem(STORAGE_KEYS.SAVED_PEERS, JSON.stringify(saved));
+
+    closeSavePeerModal();
+    showSuccessMessage(`Saved "${name}" successfully!`);
+}
+
+function getSavedPeers() {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED_PEERS) || '[]');
+    } catch (e) {
+        console.error('Error loading saved peers:', e);
+        return [];
+    }
+}
+
+// Old peer load modal functions removed - now using dropdown instead
+
+function loadPeer(item) {
+    AppState.selectedCompareHospitals.clear();
+
+    item.hospitals.forEach(provnum => {
+        AppState.selectedCompareHospitals.add(provnum);
+    });
+
+    AppState.filters.compare = { ...item.filters };
+
+    renderSelectedHospitals('compare');
+    updateFilterUI('compare');
+
+    showSuccessMessage(`Loaded "${item.name}"!`);
+}
+
+function deletePeer(id) {
+    if (!confirm('Are you sure you want to delete this saved peer group?')) return;
+
+    const saved = getSavedPeers();
+    const filtered = saved.filter(item => item.id !== id);
+    localStorage.setItem(STORAGE_KEYS.SAVED_PEERS, JSON.stringify(filtered));
+
+    showSuccessMessage('Deleted successfully');
+}
+
+/* ================ EDIT NAME ================ */
+
+function openEditNameModal(item, type) {
+    currentEditItem = item;
+    currentEditType = type;
+
+    document.getElementById('edit-name-input').value = item.name;
+    document.getElementById('edit-name-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('edit-name-input').focus(), 100);
+}
+
+function closeEditNameModal() {
+    document.getElementById('edit-name-modal').classList.add('hidden');
+    currentEditItem = null;
+    currentEditType = null;
+}
+
+function confirmEditName() {
+    const newName = document.getElementById('edit-name-input').value.trim();
+
+    if (!newName) {
+        alert('Please enter a name');
+        return;
+    }
+
+    if (currentEditType === 'target') {
+        const saved = getSavedTargets();
+        const item = saved.find(i => i.id === currentEditItem.id);
+        if (item) {
+            item.name = newName;
+            localStorage.setItem(STORAGE_KEYS.SAVED_TARGETS, JSON.stringify(saved));
+            renderSavedTargetsInGrid();
+        }
+    } else {
+        const saved = getSavedPeers();
+        const item = saved.find(i => i.id === currentEditItem.id);
+        if (item) {
+            item.name = newName;
+            localStorage.setItem(STORAGE_KEYS.SAVED_PEERS, JSON.stringify(saved));
+            renderSavedPeersInGrid();
+        }
+    }
+
+    closeEditNameModal();
+    showSuccessMessage('Renamed successfully');
+}
+
+/* ================ HELPERS ================ */
+
+function updateFilterUI(type) {
+    const filters = AppState.filters[type];
+    const prefix = type === 'target' ? 'target' : 'compare';
+
+    document.getElementById(`${prefix}-state`).value = filters.state || '';
+    document.getElementById(`${prefix}-city`).value = filters.city || '';
+    document.getElementById(`${prefix}-zip`).value = filters.zip || '';
+    document.getElementById(`${prefix}-hospital-type`).value = filters.hospitalType || '';
+    document.getElementById(`${prefix}-ownership`).value = filters.ownership || '';
+    document.getElementById(`${prefix}-beds-min`).value = filters.bedsMin || '';
+    document.getElementById(`${prefix}-beds-max`).value = filters.bedsMax || '';
+}
+
+function showSuccessMessage(message) {
+    // Simple alert for now - can be enhanced with toast notifications
+    console.log('✅', message);
+    // Could add a toast notification here
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Initialize app when DOM is loaded

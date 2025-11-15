@@ -1381,3 +1381,794 @@ label {
         padding: var(--space-3);
     }
 }
+
+/* ============================================
+   SAVE/LOAD FEATURES - CLEAN DESIGN
+   ============================================ */
+
+/* Label with View Saved Link */
+.label-with-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.view-saved-link {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.view-saved-link:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary-dark);
+}
+
+/* Save Selection Button */
+.btn-save-selection {
+    width: 100%;
+    padding: 10px 16px;
+    margin-top: 12px;
+    background: var(--color-white);
+    border: 1.5px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    color: var(--color-primary);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 1px 3px rgba(20, 184, 166, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Disk/Save icon at the end - SF Symbol style */
+.btn-save-selection::after {
+    content: '';
+    width: 15px;
+    height: 15px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512' fill='%2314B8A6'%3E%3Cpath d='M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V173.3c0-17-6.7-33.3-18.7-45.3L352 50.7C340 38.7 323.7 32 306.7 32H64zm0 96c0-17.7 14.3-32 32-32H288c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V128zM224 288a64 64 0 1 1 0 128 64 64 0 1 1 0-128z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.9;
+    transition: all var(--transition-base);
+}
+
+.btn-save-selection:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary-hover);
+    color: var(--color-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(20, 184, 166, 0.15);
+}
+
+.btn-save-selection:hover::after {
+    opacity: 1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512' fill='%230F766E'%3E%3Cpath d='M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V173.3c0-17-6.7-33.3-18.7-45.3L352 50.7C340 38.7 323.7 32 306.7 32H64zm0 96c0-17.7 14.3-32 32-32H288c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V128zM224 288a64 64 0 1 1 0 128 64 64 0 1 1 0-128z'/%3E%3C/svg%3E");
+}
+
+.btn-save-selection:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(20, 184, 166, 0.1);
+}
+
+.btn-save-selection:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1),
+                0 1px 3px rgba(20, 184, 166, 0.15);
+}
+
+/* Saved Items in Dropdown */
+.saved-dropdown-section {
+    border-bottom: 2px solid #E5E5E7;
+    background: #FAFAFA;
+}
+
+.saved-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #F5F5F7;
+    border-bottom: 1px solid #E5E5E7;
+}
+
+.saved-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #86868B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.saved-section-close {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #86868B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.saved-section-close:hover {
+    background: #E8E8ED;
+    color: #1D1D1F;
+}
+
+.saved-dropdown-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.saved-dropdown-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #E5E5E7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.saved-dropdown-item:hover {
+    background: white;
+}
+
+.saved-item-info {
+    flex: 1;
+}
+
+.saved-item-name-small {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1D1D1F;
+    margin-bottom: 4px;
+}
+
+.saved-item-details {
+    font-size: 12px;
+    color: #86868B;
+}
+
+.saved-item-actions-inline {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.saved-dropdown-item:hover .saved-item-actions-inline {
+    opacity: 1;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: fadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Modal Container */
+.modal-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-container.modal-large {
+    max-width: 700px;
+}
+
+.modal-container.modal-small {
+    max-width: 400px;
+}
+
+.modal-container.modal-center {
+    max-width: 480px;
+}
+
+.modal-container.modal-simple {
+    max-width: 420px;
+    padding: 0;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Modal Header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #E5E5E7;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1D1D1F;
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: #F5F5F7;
+    color: #86868B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #E8E8ED;
+    color: #1D1D1F;
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Simple Modal (for Save) */
+.modal-body-simple {
+    padding: 32px;
+    text-align: center;
+}
+
+.modal-title-simple {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1D1D1F;
+    margin: 0 0 20px 0;
+    letter-spacing: -0.3px;
+}
+
+.modal-input-large {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    border: 2px solid #D2D2D7;
+    border-radius: 10px;
+    background: white;
+    color: #1D1D1F;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin-bottom: 24px;
+}
+
+.modal-input-large:focus {
+    outline: none;
+    border-color: #0071E3;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+}
+
+.modal-input-large::placeholder {
+    color: #86868B;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-modal-cancel,
+.btn-modal-save {
+    flex: 1;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-modal-cancel {
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-200);
+}
+
+.btn-modal-cancel:hover {
+    background-color: var(--color-gray-200);
+    border-color: var(--color-gray-300);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-modal-cancel:active {
+    transform: translateY(0);
+}
+
+.btn-modal-save {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: var(--color-white);
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.25);
+}
+
+.btn-modal-save:hover {
+    background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary-dark));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35);
+}
+
+.btn-modal-save:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(20, 184, 166, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-modal-save:active {
+    transform: translateY(0);
+}
+
+/* Modal Form Group */
+.modal-form-group {
+    margin-bottom: 20px;
+}
+
+.modal-form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1D1D1F;
+    margin-bottom: 8px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    border: 1px solid #D2D2D7;
+    border-radius: 8px;
+    background: #FAFAFA;
+    color: #1D1D1F;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.modal-input:focus {
+    outline: none;
+    border-color: #0071E3;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+}
+
+.modal-input::placeholder {
+    color: #86868B;
+}
+
+/* Save Summary */
+.save-summary {
+    background: #F5F5F7;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 16px;
+}
+
+.save-summary-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #86868B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px 0;
+}
+
+.save-summary-content {
+    font-size: 14px;
+    color: #1D1D1F;
+    line-height: 1.5;
+}
+
+.saved-empty-state {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.saved-empty-state p {
+    font-size: 13px;
+    color: #86868B;
+    margin: 0;
+}
+
+/* Modal Footer */
+.modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    border-top: 1px solid #E5E5E7;
+}
+
+/* Modal Search Bar */
+.modal-search-bar {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.modal-search-bar .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #86868B;
+    pointer-events: none;
+}
+
+.modal-search-input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    font-size: 15px;
+    border: 1px solid #D2D2D7;
+    border-radius: 10px;
+    background: #F5F5F7;
+    color: #1D1D1F;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.modal-search-input:focus {
+    outline: none;
+    border-color: #0071E3;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+}
+
+/* Saved Items Grid/List (for View Modal) */
+.saved-items-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* Clean List Item Styles */
+.saved-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-gray-200);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.saved-list-item:last-child {
+    border-bottom: none;
+}
+
+.saved-list-item:hover {
+    background: var(--color-gray-50);
+}
+
+.saved-list-item:active {
+    background: var(--color-gray-100);
+}
+
+.saved-list-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-list-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-gray-900);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.saved-list-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-gray-500);
+}
+
+.saved-list-count {
+    font-weight: 500;
+    color: var(--color-primary);
+}
+
+.saved-list-separator {
+    color: var(--color-gray-300);
+}
+
+.saved-list-date {
+    color: var(--color-gray-500);
+}
+
+.saved-list-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    margin-left: 16px;
+}
+
+.saved-list-item:hover .saved-list-actions {
+    opacity: 1;
+}
+
+.list-action-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    color: var(--color-gray-400);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.list-action-btn:hover {
+    background: var(--color-gray-200);
+}
+
+.list-action-btn.edit:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.list-action-btn.delete:hover {
+    color: #EF4444;
+    background: #FEE2E2;
+}
+
+/* Saved Items List */
+.saved-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Saved Item Card */
+.saved-item-card {
+    background: white;
+    border: 1px solid #E5E5E7;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.saved-item-card:hover {
+    border-color: #0071E3;
+    box-shadow: 0 2px 12px rgba(0, 113, 227, 0.12);
+    transform: translateY(-1px);
+}
+
+.saved-item-card.selected {
+    border-color: #0071E3;
+    background: #E8F4FF;
+}
+
+.saved-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.saved-item-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1D1D1F;
+    margin: 0;
+}
+
+.saved-item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.saved-item-card:hover .saved-item-actions {
+    opacity: 1;
+}
+
+.item-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: #F5F5F7;
+    color: #86868B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.item-action-btn:hover {
+    background: #E8E8ED;
+    color: #1D1D1F;
+}
+
+.item-action-btn.delete:hover {
+    background: #FF3B30;
+    color: white;
+}
+
+.saved-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: #86868B;
+    margin-bottom: 8px;
+}
+
+.saved-item-count {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.saved-item-date {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.saved-item-hospitals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.hospital-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: #F5F5F7;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #1D1D1F;
+    font-weight: 500;
+}
+
+.hospital-chip-more {
+    background: #0071E3;
+    color: white;
+}
+
+/* Empty State Modal */
+.empty-state-modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-state-modal svg {
+    margin-bottom: 20px;
+}
+
+.empty-state-modal p {
+    margin: 0;
+    font-size: 16px;
+    color: #1D1D1F;
+    font-weight: 500;
+}
+
+.empty-state-hint {
+    font-size: 14px !important;
+    color: #86868B !important;
+    font-weight: 400 !important;
+    margin-top: 8px !important;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+    .modal-container {
+        max-width: 100%;
+        max-height: 95vh;
+        border-radius: 16px 16px 0 0;
+        align-self: flex-end;
+    }
+
+    .modal-header {
+        padding: 20px 20px 12px;
+    }
+
+    .modal-title {
+        font-size: 18px;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 12px 20px 20px;
+        flex-direction: column-reverse;
+    }
+
+    .modal-footer button {
+        width: 100%;
+    }
+
+    .saved-item-hospitals {
+        max-height: 60px;
+        overflow: hidden;
+    }
+}

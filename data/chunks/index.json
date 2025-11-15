@@ -1,0 +1,216 @@
+{
+  "total_hospitals": 41440,
+  "chunk_size": 1000,
+  "chunks": [
+    {
+      "file": "hospitals_000.json",
+      "hospitals": 1000,
+      "size_mb": 67.78
+    },
+    {
+      "file": "hospitals_001.json",
+      "hospitals": 1000,
+      "size_mb": 58.69
+    },
+    {
+      "file": "hospitals_002.json",
+      "hospitals": 1000,
+      "size_mb": 49.51
+    },
+    {
+      "file": "hospitals_003.json",
+      "hospitals": 1000,
+      "size_mb": 39.41
+    },
+    {
+      "file": "hospitals_004.json",
+      "hospitals": 1000,
+      "size_mb": 30.16
+    },
+    {
+      "file": "hospitals_005.json",
+      "hospitals": 1000,
+      "size_mb": 21.58
+    },
+    {
+      "file": "hospitals_006.json",
+      "hospitals": 1000,
+      "size_mb": 14.96
+    },
+    {
+      "file": "hospitals_007.json",
+      "hospitals": 1000,
+      "size_mb": 10.67
+    },
+    {
+      "file": "hospitals_008.json",
+      "hospitals": 1000,
+      "size_mb": 9.2
+    },
+    {
+      "file": "hospitals_009.json",
+      "hospitals": 1000,
+      "size_mb": 6.33
+    },
+    {
+      "file": "hospitals_010.json",
+      "hospitals": 1000,
+      "size_mb": 5.82
+    },
+    {
+      "file": "hospitals_011.json",
+      "hospitals": 1000,
+      "size_mb": 4.7
+    },
+    {
+      "file": "hospitals_012.json",
+      "hospitals": 1000,
+      "size_mb": 4.06
+    },
+    {
+      "file": "hospitals_013.json",
+      "hospitals": 1000,
+      "size_mb": 4.01
+    },
+    {
+      "file": "hospitals_014.json",
+      "hospitals": 1000,
+      "size_mb": 3.66
+    },
+    {
+      "file": "hospitals_015.json",
+      "hospitals": 1000,
+      "size_mb": 3.46
+    },
+    {
+      "file": "hospitals_016.json",
+      "hospitals": 1000,
+      "size_mb": 3.44
+    },
+    {
+      "file": "hospitals_017.json",
+      "hospitals": 1000,
+      "size_mb": 3.08
+    },
+    {
+      "file": "hospitals_018.json",
+      "hospitals": 1000,
+      "size_mb": 3.15
+    },
+    {
+      "file": "hospitals_019.json",
+      "hospitals": 1000,
+      "size_mb": 3.14
+    },
+    {
+      "file": "hospitals_020.json",
+      "hospitals": 1000,
+      "size_mb": 2.98
+    },
+    {
+      "file": "hospitals_021.json",
+      "hospitals": 1000,
+      "size_mb": 2.83
+    },
+    {
+      "file": "hospitals_022.json",
+      "hospitals": 1000,
+      "size_mb": 2.91
+    },
+    {
+      "file": "hospitals_023.json",
+      "hospitals": 1000,
+      "size_mb": 2.84
+    },
+    {
+      "file": "hospitals_024.json",
+      "hospitals": 1000,
+      "size_mb": 2.74
+    },
+    {
+      "file": "hospitals_025.json",
+      "hospitals": 1000,
+      "size_mb": 2.65
+    },
+    {
+      "file": "hospitals_026.json",
+      "hospitals": 1000,
+      "size_mb": 2.61
+    },
+    {
+      "file": "hospitals_027.json",
+      "hospitals": 1000,
+      "size_mb": 2.45
+    },
+    {
+      "file": "hospitals_028.json",
+      "hospitals": 1000,
+      "size_mb": 2.48
+    },
+    {
+      "file": "hospitals_029.json",
+      "hospitals": 1000,
+      "size_mb": 2.38
+    },
+    {
+      "file": "hospitals_030.json",
+      "hospitals": 1000,
+      "size_mb": 2.34
+    },
+    {
+      "file": "hospitals_031.json",
+      "hospitals": 1000,
+      "size_mb": 2.21
+    },
+    {
+      "file": "hospitals_032.json",
+      "hospitals": 1000,
+      "size_mb": 2.11
+    },
+    {
+      "file": "hospitals_033.json",
+      "hospitals": 1000,
+      "size_mb": 2.04
+    },
+    {
+      "file": "hospitals_034.json",
+      "hospitals": 1000,
+      "size_mb": 1.89
+    },
+    {
+      "file": "hospitals_035.json",
+      "hospitals": 1000,
+      "size_mb": 1.82
+    },
+    {
+      "file": "hospitals_036.json",
+      "hospitals": 1000,
+      "size_mb": 1.71
+    },
+    {
+      "file": "hospitals_037.json",
+      "hospitals": 1000,
+      "size_mb": 1.57
+    },
+    {
+      "file": "hospitals_038.json",
+      "hospitals": 1000,
+      "size_mb": 1.43
+    },
+    {
+      "file": "hospitals_039.json",
+      "hospitals": 1000,
+      "size_mb": 1.2
+    },
+    {
+      "file": "hospitals_040.json",
+      "hospitals": 1000,
+      "size_mb": 0.87
+    },
+    {
+      "file": "hospitals_041.json",
+      "hospitals": 440,
+      "size_mb": 0.25
+    }
+  ]
+}
